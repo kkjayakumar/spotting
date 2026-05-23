@@ -37,7 +37,7 @@ export function installExtensionFetchBridge() {
   if (installed) return;
   installed = true;
 
-  setCaptureFetchTransport(async (url, init) => {
+  setCaptureFetchTransport(async (url: string, init: RequestInit) => {
     const result = await sendApiFetch({
       url,
       method: init.method,
