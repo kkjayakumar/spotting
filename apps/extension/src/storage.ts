@@ -72,6 +72,7 @@ async function readArea(
   const keys = [
     API_KEY,
     PUBLIC_KEY,
+    DASHBOARD_KEY,
     ...LEGACY_API_KEYS,
     ...LEGACY_PUBLIC_KEYS,
   ];
