@@ -5,7 +5,9 @@ export type ApiFetchMessage = {
   url: string;
   method?: string;
   headers?: Record<string, string>;
+  /** Legacy path; prefer bodyBase64 for MV3 message passing. */
   body?: string | ArrayBuffer | null;
+  bodyBase64?: string | null;
 };
 
 export type ApiFetchResult =
@@ -14,9 +16,50 @@ export type ApiFetchResult =
       status: number;
       statusText: string;
       headers: Record<string, string>;
-      body: ArrayBuffer;
+      /** Legacy path; prefer bodyBase64 for MV3 message passing. */
+      body?: ArrayBuffer;
+      bodyBase64?: string;
     }
   | { ok: false; error: string; status?: number };
+
+function arrayBufferToBase64(bytes: ArrayBuffer): string {
+  const view = new Uint8Array(bytes);
+  let binary = "";
+  const chunkSize = 0x8000;
+  for (let i = 0; i < view.length; i += chunkSize) {
+    binary += String.fromCharCode(...view.subarray(i, i + chunkSize));
+  }
+  return btoa(binary);
+}
+
+function base64ToArrayBuffer(base64: string): ArrayBuffer {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes.buffer;
+}
+
+function encodeRequestBody(
+  body: string | ArrayBuffer | null | undefined,
+): Pick<ApiFetchMessage, "body" | "bodyBase64"> {
+  if (body == null) return {};
+  if (typeof body === "string") {
+    return { body };
+  }
+  return { bodyBase64: arrayBufferToBase64(body) };
+}
+
+function decodeRequestBody(
+  message: ApiFetchMessage,
+): string | ArrayBuffer | undefined {
+  if (message.bodyBase64) {
+    return base64ToArrayBuffer(message.bodyBase64);
+  }
+  if (message.body == null) return undefined;
+  return message.body;
+}
 
 function formatFetchFailure(url: string, error: string): string {
   const isLocal =
@@ -39,7 +82,7 @@ export async function proxyApiFetch(
     const res = await fetch(message.url, {
       method: message.method ?? "GET",
       headers: message.headers,
-      body: message.body ?? undefined,
+      body: decodeRequestBody(message),
     });
     const body = await res.arrayBuffer();
     const headers: Record<string, string> = {};
@@ -51,7 +94,7 @@ export async function proxyApiFetch(
       status: res.status,
       statusText: res.statusText,
       headers,
-      body,
+      bodyBase64: arrayBufferToBase64(body),
     };
   } catch (e) {
     const raw = e instanceof Error ? e.message : "Failed to fetch";
@@ -67,9 +110,17 @@ export async function sendApiFetch(
 ): Promise<ApiFetchResult> {
   await wakeServiceWorker();
 
+  const encodedBody = encodeRequestBody(message.body ?? null);
+
   return new Promise((resolve) => {
     chrome.runtime.sendMessage(
-      { type: "SPOTTING_API_FETCH", ...message } satisfies ApiFetchMessage,
+      {
+        type: "SPOTTING_API_FETCH",
+        url: message.url,
+        method: message.method,
+        headers: message.headers,
+        ...encodedBody,
+      } satisfies ApiFetchMessage,
       (response: ApiFetchResult | undefined) => {
         const lastError = chrome.runtime.lastError;
         if (lastError?.message) {

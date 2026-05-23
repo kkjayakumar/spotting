@@ -6,6 +6,18 @@ import { sendApiFetch } from "./api-proxy";
 
 let installed = false;
 
+/** Only proxy when the page cannot call the API directly (HTTPS page → HTTP API). */
+function needsExtensionFetchProxy(url: string): boolean {
+  if (typeof window === "undefined" || window.location.protocol !== "https:") {
+    return false;
+  }
+  try {
+    return new URL(url).protocol === "http:";
+  } catch {
+    return false;
+  }
+}
+
 function headersToRecord(headers: HeadersInit | undefined): Record<string, string> {
   const out: Record<string, string> = {};
   if (!headers) return out;
@@ -38,6 +50,10 @@ export function installExtensionFetchBridge() {
   installed = true;
 
   setCaptureFetchTransport(async (url: string, init: RequestInit) => {
+    if (!needsExtensionFetchProxy(url)) {
+      return fetch(url, init);
+    }
+
     const result = await sendApiFetch({
       url,
       method: init.method,
@@ -49,7 +65,21 @@ export function installExtensionFetchBridge() {
       throw new Error(result.error);
     }
 
-    return new Response(result.body, {
+    const bodyBytes = result.bodyBase64
+      ? Uint8Array.from(atob(result.bodyBase64), (c) => c.charCodeAt(0))
+      : result.body instanceof ArrayBuffer
+        ? new Uint8Array(result.body)
+        : typeof result.body === "string"
+          ? new TextEncoder().encode(result.body)
+          : null;
+
+    if (bodyBytes == null) {
+      throw new Error(
+        "Extension API proxy returned an unreadable response body. Reload the extension in chrome://extensions.",
+      );
+    }
+
+    return new Response(bodyBytes, {
       status: result.status,
       statusText: result.statusText,
       headers: result.headers,

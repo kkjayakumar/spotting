@@ -200,11 +200,21 @@ export class SpottingClient {
       },
       "createReport",
     );
+    const text = await res.text();
     if (!res.ok) {
-      const text = await res.text();
       throw formatApiFailure(res, text, "createReport");
     }
-    const data = (await res.json()) as { id: string };
+    let data: { id?: string };
+    try {
+      data = JSON.parse(text) as { id?: string };
+    } catch {
+      throw new Error(
+        `createReport failed: API returned non-JSON (${res.status}). ${text.trimStart().slice(0, 160)}`,
+      );
+    }
+    if (!data.id) {
+      throw new Error("createReport failed: response missing report id.");
+    }
     return { id: data.id };
   }
 
@@ -232,13 +242,21 @@ export class SpottingClient {
       },
       "upload-sessions",
     );
+    const startText = await start.text();
     if (!start.ok) {
-      const text = await start.text();
-      throw formatApiFailure(start, text, "upload-sessions");
+      throw formatApiFailure(start, startText, "upload-sessions");
     }
-    const { sessionId } = (await start.json()) as {
-      sessionId: string;
-    };
+    let sessionId: string;
+    try {
+      sessionId = (JSON.parse(startText) as { sessionId?: string }).sessionId ?? "";
+    } catch {
+      throw new Error(
+        `upload-sessions failed: API returned non-JSON (${start.status}). ${startText.trimStart().slice(0, 160)}`,
+      );
+    }
+    if (!sessionId) {
+      throw new Error("upload-sessions failed: response missing sessionId.");
+    }
 
     const put = await captureFetch(
       this.apiBaseUrl,
