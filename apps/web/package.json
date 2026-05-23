@@ -1,0 +1,40 @@
+{
+  "name": "@spotting/web",
+  "version": "0.1.1",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --port 3003",
+    "check-types": "tsc --noEmit -p tsconfig.json",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "@base-ui/react": "*",
+    "@spotting/env": "workspace:*",
+    "@spotting/shared": "workspace:*",
+    "@spotting/ui": "workspace:*",
+    "@tanstack/react-form": "*",
+    "@tanstack/react-query": "*",
+    "@tanstack/react-table": "*",
+    "babel-plugin-react-compiler": "*",
+    "jszip": "^3.10.1",
+    "lucide-react": "*",
+    "next": "*",
+    "nextjs-toploader": "*",
+    "nuqs": "*",
+    "react": "*",
+    "react-dom": "*",
+    "sonner": "*",
+    "zod": "*"
+  },
+  "devDependencies": {
+    "@spotting/config": "workspace:*",
+    "@tailwindcss/postcss": "*",
+    "@tanstack/react-query-devtools": "*",
+    "@types/node": "^20",
+    "@types/react": "*",
+    "@types/react-dom": "*",
+    "tailwindcss": "*",
+    "typescript": "*"
+  }
+}

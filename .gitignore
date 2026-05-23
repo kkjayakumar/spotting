@@ -1,0 +1,9 @@
+node_modules
+.turbo
+dist
+apps/api/src/generated
+.next
+.env
+.env.local
+coverage
+*.log

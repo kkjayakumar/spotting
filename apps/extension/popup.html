@@ -1,0 +1,328 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Spotting Capture</title>
+    <style>
+      :root {
+        --electric: #00bfff;
+        --border: #e5e7eb;
+        --muted: #6b7280;
+        --text: #111827;
+        --bg: #ffffff;
+        --row-hover: #f9fafb;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font-family:
+          system-ui,
+          -apple-system,
+          "Segoe UI",
+          Roboto,
+          sans-serif;
+        width: 360px;
+        background: var(--bg);
+        color: var(--text);
+      }
+      .shell {
+        padding: 16px;
+      }
+      .header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 16px;
+      }
+      .logo {
+        font-size: 22px;
+        font-weight: 800;
+        letter-spacing: -0.03em;
+        color: var(--text);
+      }
+      .logo span {
+        color: var(--electric);
+      }
+      .header-actions {
+        display: flex;
+        gap: 4px;
+      }
+      .icon-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 36px;
+        height: 36px;
+        border: none;
+        border-radius: 10px;
+        background: transparent;
+        color: var(--muted);
+        cursor: pointer;
+      }
+      .icon-btn:hover {
+        background: var(--row-hover);
+        color: var(--text);
+      }
+      .icon-btn svg {
+        width: 20px;
+        height: 20px;
+      }
+      .action-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        width: 100%;
+        padding: 14px 16px;
+        margin-bottom: 10px;
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        background: var(--bg);
+        font-size: 15px;
+        font-weight: 500;
+        color: var(--text);
+        cursor: pointer;
+        text-align: left;
+        transition:
+          background 0.15s,
+          border-color 0.15s;
+      }
+      .action-row:hover {
+        background: var(--row-hover);
+        border-color: #d1d5db;
+      }
+      .action-row:disabled {
+        opacity: 0.55;
+        cursor: not-allowed;
+      }
+      .action-icon {
+        flex-shrink: 0;
+        color: var(--muted);
+      }
+      .action-icon svg {
+        width: 22px;
+        height: 22px;
+        display: block;
+      }
+      .action-label {
+        flex: 1;
+      }
+      .divider {
+        height: 1px;
+        background: var(--border);
+        margin: 14px 0;
+      }
+      .hidden {
+        display: none !important;
+      }
+      #view-setup label {
+        display: block;
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--muted);
+        margin: 10px 0 6px;
+      }
+      #view-setup input {
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        font-size: 14px;
+      }
+      #view-setup input:focus {
+        outline: 2px solid color-mix(in srgb, var(--electric) 35%, transparent);
+        border-color: var(--electric);
+      }
+      .hint {
+        margin: 4px 0 12px;
+        font-size: 12px;
+        line-height: 1.45;
+        color: var(--muted);
+      }
+      .primary-btn {
+        width: 100%;
+        margin-top: 12px;
+        padding: 12px;
+        border: none;
+        border-radius: 12px;
+        background: var(--electric);
+        color: #020617;
+        font-size: 15px;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      .primary-btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+      .text-btn {
+        width: 100%;
+        margin-top: 8px;
+        padding: 8px;
+        border: none;
+        background: none;
+        color: var(--muted);
+        font-size: 13px;
+        cursor: pointer;
+      }
+      .text-btn:hover {
+        color: var(--text);
+      }
+      #status {
+        margin-top: 10px;
+        min-height: 1.2em;
+        font-size: 12px;
+        color: var(--muted);
+        line-height: 1.4;
+      }
+      #status.err,
+      .err {
+        color: #dc2626;
+      }
+      .badge {
+        font-size: 11px;
+        font-weight: 600;
+        padding: 3px 8px;
+        border-radius: 999px;
+        background: #f3f4f6;
+        color: var(--muted);
+      }
+      .badge.recording {
+        background: #fee2e2;
+        color: #dc2626;
+      }
+      .action-row.stop-row {
+        border-color: #fecaca;
+        background: #fef2f2;
+      }
+      .action-row.stop-row:hover {
+        background: #fee2e2;
+        border-color: #fca5a5;
+      }
+      .action-row.stop-row .action-icon {
+        color: #dc2626;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="view-setup" class="shell hidden">
+      <div class="header">
+        <div class="logo">SPOT<span>TING</span></div>
+      </div>
+      <p class="hint">Connect your capture key to start reporting bugs from any site.</p>
+      <label for="api">API base URL</label>
+      <input id="api" type="text" placeholder="http://localhost:3000" autocomplete="off" />
+      <p class="hint">
+        Local dev: <strong>http://localhost:3000</strong>. On HTTPS sites (e.g.
+        <strong>stage.sheshi.cloud</strong>), the extension proxies to your API — keep
+        localhost if the API runs on your machine. Staging/prod: use your HTTPS API URL.
+      </p>
+      <p class="hint">
+        For QA on any site: in Dashboard → Settings → Public Keys, leave
+        <strong>Allowed origins</strong> empty (allows all domains).
+      </p>
+      <label for="dashboard">Dashboard URL</label>
+      <input id="dashboard" type="text" placeholder="http://localhost:3003" autocomplete="off" />
+      <label for="key">Public key</label>
+      <input id="key" type="text" placeholder="crk_live_…" autocomplete="off" />
+      <button id="save" type="button" class="primary-btn">Save & continue</button>
+      <p id="status-setup" class="hint"></p>
+    </div>
+
+    <div id="view-home" class="shell hidden">
+      <div class="header">
+        <div class="logo">SPOT<span>TING</span></div>
+        <div class="header-actions">
+          <button id="home" type="button" class="icon-btn" title="Open dashboard">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1v-9.5z" />
+            </svg>
+          </button>
+          <button id="settings" type="button" class="icon-btn" title="Settings">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="3" />
+              <path
+                d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"
+              />
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <button id="action-screenshot" type="button" class="action-row">
+        <span class="action-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M4 7h2l2-3h8l2 3h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2z" />
+            <circle cx="12" cy="13" r="4" />
+          </svg>
+        </span>
+        <span class="action-label">Capture screenshot</span>
+      </button>
+
+      <button id="action-record" type="button" class="action-row">
+        <span class="action-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="5" width="18" height="14" rx="2" />
+            <path d="M10 9v6l5-3-5-3z" />
+          </svg>
+        </span>
+        <span class="action-label">Record tab</span>
+        <span id="record-badge" class="badge">Off</span>
+      </button>
+
+      <button id="action-stop-record" type="button" class="action-row stop-row hidden">
+        <span class="action-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="6" y="6" width="12" height="12" rx="1" />
+          </svg>
+        </span>
+        <span class="action-label">Stop recording</span>
+        <span class="badge recording">REC</span>
+      </button>
+
+      <div class="divider"></div>
+
+      <div id="submit-panel" class="hidden">
+        <p class="hint" style="margin-top: 0">Nothing is drawn on the page — record and send from here.</p>
+        <label for="report-title">Title</label>
+        <input id="report-title" type="text" placeholder="Short summary" autocomplete="off" />
+        <label for="report-desc">Details</label>
+        <textarea
+          id="report-desc"
+          rows="3"
+          placeholder="What went wrong?"
+          style="
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            font-size: 14px;
+            font-family: inherit;
+            resize: vertical;
+          "
+        ></textarea>
+        <p id="attachments-hint" class="hint"></p>
+        <button id="action-send" type="button" class="primary-btn">Send report</button>
+        <button id="action-cancel-submit" type="button" class="text-btn">Back</button>
+      </div>
+
+      <button id="action-report" type="button" class="action-row">
+        <span class="action-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 8v8M8 12h8" />
+            <circle cx="12" cy="12" r="9" />
+          </svg>
+        </span>
+        <span class="action-label">Send bug report</span>
+      </button>
+
+      <p id="status" class="hint"></p>
+    </div>
+
+    <script type="module" src="/src/popup/popup.ts"></script>
+  </body>
+</html>

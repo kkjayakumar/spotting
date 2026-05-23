@@ -1,0 +1,20 @@
+{
+  "extends": "@Spotting/config/tsconfig.base.json",
+  "compilerOptions": {
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "jsx": "react-jsx",
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "outDir": "dist",
+    "composite": true,
+    "strictNullChecks": true,
+    "paths": {
+      "@Spotting/ui/*": ["./src/*"]
+    }
+  },
+  "include": ["src/**/*"]
+}
+

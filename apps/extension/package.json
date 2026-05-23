@@ -1,0 +1,19 @@
+{
+  "name": "@spotting/extension",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vite build && node scripts/verify-dist.mjs",
+    "dev": "vite build && node scripts/verify-dist.mjs && vite build --watch",
+    "check-types": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@spotting/sdk-js": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.0.287",
+    "typescript": "^5.9.3",
+    "vite": "^6.0.3"
+  }
+}

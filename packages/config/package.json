@@ -1,0 +1,17 @@
+{
+  "name": "@spotting/config",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./logger": {
+      "types": "./logger.d.ts",
+      "default": "./logger.js"
+    }
+  },
+  "scripts": {
+    "build": "echo \"wire config build\"",
+    "lint": "echo \"wire config lint\"",
+    "check-types": "echo \"wire config typecheck\"",
+    "test": "echo \"wire config tests\""
+  }
+}
