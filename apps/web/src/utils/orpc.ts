@@ -13,6 +13,8 @@ import {
 import { BUG_REPORT_DEBUGGER_INGESTION_STATUS_OPTIONS } from "@spotting/shared/constants/bug-report";
 
 export { fetchApi, fetchApiWithRequestHeaders };
+
+export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       retry: 1,
