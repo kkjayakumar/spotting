@@ -21,7 +21,8 @@ import { parseAsString, parseAsStringLiteral, useQueryState } from "nuqs"
 import { useCallback, useMemo, useRef, useState } from "react"
 import { toast } from "sonner"
 import { EditBugReportSheet } from "@/components/bug-reports/edit-bug-report-sheet"
-import { client, orpc } from "@/utils/orpc"
+import { orpc } from "@/utils/orpc"
+import { retryBugReportDebuggerIngestion } from "@/lib/bug-report-api"
 
 import { BugReportCanvas } from "./bug-report-canvas"
 import { BugReportHeader } from "./bug-report-header"
@@ -439,7 +440,7 @@ export function BugReportView({ id }: BugReportViewProps) {
   const [selectedEntryIds, setSelectedEntryIds] =
     useState<SelectedEntryIds>(EMPTY_SELECTION)
   const retryIngestionMutation = useMutation({
-    mutationFn: async () => client.bugReport.retryDebuggerIngestion({ id }),
+    mutationFn: async () => retryBugReportDebuggerIngestion({ id }),
     onSuccess: async () => {
       await refetch()
       toast.success("Debugger ingestion retried")

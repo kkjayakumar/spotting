@@ -63,6 +63,40 @@ async function requireReport(reportId: string) {
   return report;
 }
 
+async function memberOrganizationIds(userId: string): Promise<string[]> {
+  const memberships = await prisma.membership.findMany({
+    where: { userId },
+    select: { organizationId: true },
+  });
+  return memberships.map((m) => m.organizationId);
+}
+
+function metadataRecord(value: unknown): Record<string, unknown> {
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    return value as Record<string, unknown>;
+  }
+  return {};
+}
+
+function parseReportIds(value: unknown): string[] {
+  if (!Array.isArray(value) || value.length === 0) {
+    throw apiError(400, "VALIDATION_ERROR", "ids must be a non-empty array", [
+      { field: "ids", issue: "required" },
+    ]);
+  }
+  const ids: string[] = [];
+  for (let i = 0; i < value.length; i++) {
+    const id = value[i];
+    if (typeof id !== "string" || id.trim().length === 0) {
+      throw apiError(400, "VALIDATION_ERROR", "Invalid report id", [
+        { field: `ids[${i}]`, issue: "must be a non-empty string" },
+      ]);
+    }
+    ids.push(id.trim());
+  }
+  return ids;
+}
+
 /** Same visibility rules as GET /reports/:id (org member or public report). */
 async function requireReportForViewer(reportId: string, c: Context) {
   const report = await prisma.report.findUnique({ where: { id: reportId } });
@@ -640,7 +674,7 @@ v1.get("/reports", async (c) => {
       },
     }),
   ]);
-  const items = await serializeReportsForApi(reports);
+  const items = await serializeReportsForApi(reports, { canEdit: true });
   return c.json({
     items,
     page,
@@ -648,6 +682,99 @@ v1.get("/reports", async (c) => {
     total,
     totalPages: Math.max(1, Math.ceil(total / pageSize)),
   });
+});
+
+v1.delete("/reports/bulk", async (c) => {
+  const { userId } = await requireSession(c);
+  const body = await readJsonBody<{ ids?: unknown }>(c);
+  const ids = parseReportIds(body.ids);
+  const orgIds = await memberOrganizationIds(userId);
+  const result = await prisma.report.deleteMany({
+    where: {
+      id: { in: ids },
+      organizationId: { in: orgIds },
+    },
+  });
+  return c.json({ deletedCount: result.count });
+});
+
+v1.patch("/reports/bulk", async (c) => {
+  const { userId } = await requireSession(c);
+  const body = await readJsonBody<{
+    ids?: unknown;
+    status?: string;
+    priority?: string;
+    visibility?: string;
+    tags?: unknown;
+  }>(c);
+  const ids = parseReportIds(body.ids);
+  const orgIds = await memberOrganizationIds(userId);
+  const nextStatus = optionalEnumValue(
+    body.status,
+    Object.values(ReportStatus),
+    "status",
+  );
+  const nextPriority = optionalEnumValue(
+    body.priority,
+    Object.values(ReportPriority),
+    "priority",
+  );
+  const nextVisibility = optionalEnumValue(
+    body.visibility,
+    Object.values(ReportVisibility),
+    "visibility",
+  );
+  const nextTags = Array.isArray(body.tags)
+    ? body.tags.filter((tag): tag is string => typeof tag === "string")
+    : undefined;
+
+  if (
+    !nextStatus &&
+    !nextPriority &&
+    !nextVisibility &&
+    nextTags === undefined
+  ) {
+    throw apiError(400, "VALIDATION_ERROR", "No update fields provided");
+  }
+
+  const where = {
+    id: { in: ids },
+    organizationId: { in: orgIds },
+  };
+
+  if (nextTags !== undefined) {
+    const reports = await prisma.report.findMany({ where });
+    if (reports.length === 0) {
+      return c.json({ updatedCount: 0 });
+    }
+    await prisma.$transaction(
+      reports.map((report) =>
+        prisma.report.update({
+          where: { id: report.id },
+          data: {
+            ...(nextStatus ? { status: nextStatus } : {}),
+            ...(nextPriority ? { priority: nextPriority } : {}),
+            ...(nextVisibility ? { visibility: nextVisibility } : {}),
+            metadataJson: {
+              ...metadataRecord(report.metadataJson),
+              tags: nextTags,
+            },
+          },
+        }),
+      ),
+    );
+    return c.json({ updatedCount: reports.length });
+  }
+
+  const result = await prisma.report.updateMany({
+    where,
+    data: {
+      ...(nextStatus ? { status: nextStatus } : {}),
+      ...(nextPriority ? { priority: nextPriority } : {}),
+      ...(nextVisibility ? { visibility: nextVisibility } : {}),
+    },
+  });
+  return c.json({ updatedCount: result.count });
 });
 
 v1.get("/reports/:reportId", async (c) => {
@@ -668,7 +795,7 @@ v1.get("/reports/:reportId", async (c) => {
   if (session) {
     try {
       await requireOrgMembership(session.userId, report.organizationId);
-      return c.json(await serializeReportForApi(report));
+      return c.json(await serializeReportForApi(report, { canEdit: true }));
     } catch {
       /* not a member — fall through to public visibility check */
     }
@@ -739,7 +866,23 @@ v1.patch("/reports/:reportId", async (c) => {
     visibility?: string;
     pageUrl?: string;
     metadataJson?: unknown;
+    tags?: unknown;
   }>(c);
+
+  const nextTags = Array.isArray(body.tags)
+    ? body.tags.filter((tag): tag is string => typeof tag === "string")
+    : undefined;
+  const metadataJson =
+    nextTags !== undefined
+      ? {
+          ...metadataRecord(current.metadataJson),
+          tags: nextTags,
+        }
+      : body.metadataJson === undefined
+        ? undefined
+        : body.metadataJson === null
+          ? Prisma.JsonNull
+          : (body.metadataJson as Prisma.InputJsonValue);
 
   const updated = await prisma.report.update({
     where: { id: reportId },
@@ -751,15 +894,19 @@ v1.patch("/reports/:reportId", async (c) => {
       visibility:
         optionalEnumValue(body.visibility, Object.values(ReportVisibility), "visibility") ?? current.visibility,
       pageUrl: optionalTrimmedString(body.pageUrl) ?? current.pageUrl,
-      metadataJson:
-        body.metadataJson === undefined
-          ? undefined
-          : body.metadataJson === null
-            ? Prisma.JsonNull
-            : (body.metadataJson as Prisma.InputJsonValue),
+      ...(metadataJson !== undefined ? { metadataJson } : {}),
     },
   });
   return c.json(updated);
+});
+
+v1.delete("/reports/:reportId", async (c) => {
+  const { userId } = await requireSession(c);
+  const reportId = c.req.param("reportId");
+  const report = await requireReport(reportId);
+  await requireOrgMembership(userId, report.organizationId);
+  await prisma.report.delete({ where: { id: reportId } });
+  return c.json({ ok: true, id: reportId });
 });
 
 v1.patch("/reports/:reportId/status", async (c) => {

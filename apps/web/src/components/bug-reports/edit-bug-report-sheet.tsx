@@ -33,7 +33,7 @@ import { useState } from "react"
 import { toast } from "sonner"
 
 import { editBugReportFormSchema } from "@/lib/schema/bug-report"
-import { client } from "@/utils/orpc"
+import { updateBugReport } from "@/lib/bug-report-api"
 
 const statusOptions: Array<{ label: string; value: BugReportStatus }> = [
   { label: "Open", value: BUG_REPORT_STATUS_OPTIONS.open },
@@ -120,7 +120,7 @@ export function EditBugReportSheet({
       setIsSaving(true)
 
       try {
-        await client.bugReport.update({
+        await updateBugReport({
           id: report.id,
           title: value.title.trim(),
           tags: parseTagInput(value.tagsInput),

@@ -57,7 +57,7 @@ export async function serializeReportForApi<
     metadataJson?: unknown;
     uploadSessions?: UploadSessionLike[];
   },
->(report: T) {
+>(report: T, options?: { canEdit?: boolean }) {
   const meta = asRecord(report.metadataJson) ?? {};
   const artifact = report.uploadSessions
     ? await resolvePrimaryArtifact(report.uploadSessions)
@@ -70,6 +70,10 @@ export async function serializeReportForApi<
   return {
     ...rest,
     url: report.pageUrl ?? undefined,
+    tags: Array.isArray(meta.tags)
+      ? meta.tags.filter((tag): tag is string => typeof tag === "string")
+      : [],
+    canEdit: options?.canEdit ?? false,
     attachmentUrl:
       artifact?.attachmentUrl ??
       (typeof meta.attachmentUrl === "string" ? meta.attachmentUrl : undefined),
@@ -100,6 +104,8 @@ export async function serializeReportsForApi<
     metadataJson?: unknown;
     uploadSessions?: UploadSessionLike[];
   },
->(reports: T[]) {
-  return Promise.all(reports.map((report) => serializeReportForApi(report)));
+>(reports: T[], options?: { canEdit?: boolean }) {
+  return Promise.all(
+    reports.map((report) => serializeReportForApi(report, options)),
+  );
 }

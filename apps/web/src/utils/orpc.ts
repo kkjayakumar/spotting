@@ -2,10 +2,17 @@ import { QueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import type { SharedBugReport } from "@/app/s/[id]/_components/types";
-import { API_BASE_URL } from "@/lib/api-base-url";
+import { fetchApi, fetchApiWithRequestHeaders } from "@/lib/api-fetch";
+import {
+  deleteBugReport,
+  deleteBugReportsBulk,
+  retryBugReportDebuggerIngestion,
+  updateBugReport,
+  updateBugReportsBulk,
+} from "@/lib/bug-report-api";
 import { BUG_REPORT_DEBUGGER_INGESTION_STATUS_OPTIONS } from "@spotting/shared/constants/bug-report";
 
-export const queryClient = new QueryClient({
+export { fetchApi, fetchApiWithRequestHeaders };
   defaultOptions: {
     queries: {
       retry: 1,
@@ -19,93 +26,7 @@ export const queryClient = new QueryClient({
   },
 });
 
-type IncomingRequestHeaders = Pick<Headers, "get">
-
-/** RSC / server: pass `headers()` from `next/headers` so the session cookie is forwarded. */
-export async function fetchApiWithRequestHeaders(
-  path: string,
-  options: Omit<RequestInit, "headers"> & {
-    headers?: IncomingRequestHeaders
-  } = {}
-) {
-  const headers = new Headers();
-  headers.set("Content-Type", "application/json");
-  const cookieHeader = options.headers?.get("cookie") ?? "";
-  if (cookieHeader.length > 0) {
-    headers.set("Cookie", cookieHeader);
-  }
-  if (!headers.has("Authorization")) {
-    const match = cookieHeader.match(/spotting_token=([^;]+)/);
-    if (match) {
-      headers.set(
-        "Authorization",
-        `Bearer ${decodeURIComponent(match[1])}`
-      );
-    }
-  }
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    ...options,
-    headers,
-  });
-  if (!response.ok) {
-    let message = "Request failed";
-    try {
-      const data = await response.json();
-      message = data.error?.message || data.message || message;
-    } catch {
-      /* ignore */
-    }
-    throw new Error(message);
-  }
-  const text = await response.text();
-  if (!text) return null;
-  try {
-    return JSON.parse(text);
-  } catch {
-    return null;
-  }
-}
-
-export async function fetchApi(path: string, options: RequestInit = {}) {
-  const headers = new Headers(options.headers);
-  headers.set("Content-Type", "application/json");
-
-  // In a real scenario, attach cookies or localStorage tokens here
-  // Spotting used to attach token from localStorage in window.SpottingClient.state
-  let token = null;
-  if (typeof window !== "undefined") {
-    try {
-      token = localStorage.getItem("spotting_token");
-    } catch (e) {}
-  }
-  if (token) {
-    headers.set("Authorization", `Bearer ${token}`);
-  }
-
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    ...options,
-    headers,
-    credentials: "omit", // Use token instead of cookies for Spotting currently
-  });
-
-  if (!response.ok) {
-    let message = "Request failed";
-    try {
-      const data = await response.json();
-      message = data.error?.message || data.message || message;
-    } catch {}
-    throw new Error(message);
-  }
-
-  // Handle empty responses
-  const text = await response.text();
-  if (!text) return null;
-  try {
-    return JSON.parse(text);
-  } catch {
-    return null;
-  }
-}
+type IncomingRequestHeaders = Pick<Headers, "get">;
 
 function asRecord(v: unknown): Record<string, unknown> | null {
   return v && typeof v === "object" ? (v as Record<string, unknown>) : null
@@ -483,8 +404,11 @@ export const client: any = {
       items: [] as unknown[],
       pagination: { hasNextPage: false, page: 1 },
     }),
-    retryDebuggerIngestion: async (input: { id: string }) =>
-      fetchApi(`/v1/reports/${input.id}/retry`, { method: "POST" }),
+    update: updateBugReport,
+    updateBulk: updateBugReportsBulk,
+    delete: deleteBugReport,
+    deleteBulk: deleteBugReportsBulk,
+    retryDebuggerIngestion: retryBugReportDebuggerIngestion,
   },
   billing: {
     getCurrentOrganizationPlan: async (_input?: {

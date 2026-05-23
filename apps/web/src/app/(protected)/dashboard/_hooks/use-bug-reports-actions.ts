@@ -9,7 +9,13 @@ import { useMutation } from "@tanstack/react-query"
 import { useEffect, useMemo, useState } from "react"
 import { toast } from "sonner"
 
-import { client } from "@/utils/orpc"
+import {
+  deleteBugReport,
+  deleteBugReportsBulk,
+  retryBugReportDebuggerIngestion,
+  updateBugReport,
+  updateBugReportsBulk,
+} from "@/lib/bug-report-api"
 import { parseTagInput } from "../_components/bug-reports/utils"
 
 interface UseBugReportsActionsInput {
@@ -53,7 +59,7 @@ export function useBugReportsActions({
   }
 
   const deleteMutation = useMutation({
-    mutationFn: async (id: string) => client.bugReport.delete({ id }),
+    mutationFn: async (id: string) => deleteBugReport({ id }),
     onSuccess: async (_, id) => {
       setSelectedIds((previous) => {
         const next = new Set(previous)
@@ -69,7 +75,7 @@ export function useBugReportsActions({
   })
 
   const bulkDeleteMutation = useMutation({
-    mutationFn: async (ids: string[]) => client.bugReport.deleteBulk({ ids }),
+    mutationFn: async (ids: string[]) => deleteBugReportsBulk({ ids }),
     onSuccess: async (result) => {
       setSelectedIds(new Set())
       await refetchAll()
@@ -86,7 +92,7 @@ export function useBugReportsActions({
       status?: BugReportStatus
       priority?: Priority
       visibility?: BugReportVisibility
-    }) => client.bugReport.update(input),
+    }) => updateBugReport(input),
     onSuccess: async () => {
       await refetchAll()
       toast.success("Report updated")
@@ -103,7 +109,7 @@ export function useBugReportsActions({
       priority?: Priority
       visibility?: BugReportVisibility
       tags?: string[]
-    }) => client.bugReport.updateBulk(input),
+    }) => updateBugReportsBulk(input),
     onSuccess: async (result) => {
       await refetchAll()
       toast.success(`Updated ${result.updatedCount} report(s)`)
@@ -116,7 +122,7 @@ export function useBugReportsActions({
 
   const retryIngestionMutation = useMutation({
     mutationFn: async (id: string) =>
-      client.bugReport.retryDebuggerIngestion({ id }),
+      retryBugReportDebuggerIngestion({ id }),
     onSuccess: async () => {
       await refetchAll()
       toast.success("Debugger ingestion retried")
