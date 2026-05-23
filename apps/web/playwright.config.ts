@@ -19,8 +19,10 @@ export default defineConfig({
   ],
   webServer: {
     command: 'bun run dev',
+    cwd: '.',
     url: 'http://localhost:3003',
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
   },
+  testMatch: '**/*.spec.ts',
 });

@@ -1,0 +1,16 @@
+node_modules
+.git
+.github
+.turbo
+.next
+dist
+coverage
+*.log
+.env
+.env.*
+docs
+infra
+scripts
+PROJECT_PLAN_CHECKLIST.md
+spiderweb.html
+update-css.js

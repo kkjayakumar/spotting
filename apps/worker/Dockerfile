@@ -4,8 +4,9 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 
-COPY package.json bun.lock turbo.json tsconfig.json biome.jsonc ./
-COPY apps/worker ./apps/worker
+COPY package.json bun.lock turbo.json tsconfig.base.json ./
+COPY patches ./patches
+COPY apps ./apps
 COPY packages ./packages
 
 RUN bun install --frozen-lockfile

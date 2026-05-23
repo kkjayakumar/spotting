@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   spotting-postgres:
     image: postgres:16
@@ -51,10 +49,8 @@ services:
       - SMTP_REGION=${SMTP_REGION}
       - SMTP_FROM=${SMTP_FROM}
       - SMTP_PORT=${SMTP_PORT:-587}
-      - SMTP_USER=${SMTP_USER}
-      - SMTP_PASS=${SMTP_PASS}
-      - SMTP_USERNAME=${SMTP_USERNAME}
-      - SMTP_PASSWORD=${SMTP_PASSWORD}
+      - SMTP_USERNAME=${SMTP_USERNAME:-}
+      - SMTP_PASSWORD=${SMTP_PASSWORD:-}
       - MAIL_APP_NAME=${MAIL_APP_NAME:-Spotting}
       - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET}
       - BETTER_AUTH_URL=${BETTER_AUTH_URL}

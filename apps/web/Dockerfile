@@ -20,13 +20,13 @@ ENV NEXT_PUBLIC_DEMO_URL=${NEXT_PUBLIC_DEMO_URL}
 ENV NEXT_PUBLIC_POSTHOG_KEY=${NEXT_PUBLIC_POSTHOG_KEY}
 ENV NEXT_PUBLIC_POSTHOG_HOST=${NEXT_PUBLIC_POSTHOG_HOST}
 
-COPY package.json bun.lock turbo.json tsconfig.json biome.jsonc ./
+COPY package.json bun.lock turbo.json tsconfig.base.json ./
+COPY patches ./patches
 COPY apps ./apps
 COPY packages ./packages
-COPY sdks ./sdks
 
 RUN bun install --frozen-lockfile
-RUN bun run build -- --filter=web
+RUN bun run build -- --filter=@spotting/web
 RUN cp -R apps/web/.next apps/web/.next-template
 RUN chmod +x apps/web/docker-entrypoint.sh
 

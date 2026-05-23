@@ -3,8 +3,8 @@
   "compilerOptions": {
     "types": ["bun"],
     "outDir": "dist",
-    "rootDir": "src",
+    "rootDir": ".",
     "noEmit": false
   },
-  "include": ["src"]
+  "include": ["src", "../api/src/generated/prisma"]
 }

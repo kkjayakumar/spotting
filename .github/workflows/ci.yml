@@ -88,14 +88,8 @@ jobs:
         if: steps.cache-playwright.outputs.cache-hit == 'true'
         run: bunx playwright install-deps
 
-      - name: Run Playwright Tests (Safe Check)
-        run: |
-          if [ -f "playwright.config.ts" ] || [ -f "playwright.config.js" ] || grep -q "playwright" package.json; then
-            bunx playwright test
-          else
-            echo "No Playwright configuration or scripts found in workspace. Skipping E2E test execution."
-          fi
-        shell: bash
+      - name: Run Playwright Tests
+        run: bun run test:e2e
 
       - name: Upload Playwright Report
         uses: actions/upload-artifact@v4
