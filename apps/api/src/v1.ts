@@ -12,6 +12,12 @@ import {
 import { requireSession, tryReadSession } from "./auth";
 import { createCapturePublicRouter } from "./capture-public";
 import { prisma } from "./db";
+import {
+  issueAndSendEmailVerificationOtp,
+  mapVerificationError,
+  verifyEmailOtp,
+} from "./email-verification";
+import { isEmailConfigured } from "./email";
 import { requireOrgMembership, requireOrgRole } from "./permissions";
 import {
   buildDebuggerEventsFromCapture,
@@ -30,58 +36,6 @@ import {
 } from "./validation";
 
 const v1 = new Hono();
-const inMemoryVerificationTokens = new Map<
-  string,
-  { userId: string; expiresAtMs: number; consumedAtMs: number | null }
->();
-
-async function issueEmailVerificationToken(userId: string) {
-  const token = crypto.randomUUID();
-  const tokenStoreRaw = (prisma as unknown as { emailVerificationToken?: unknown }).emailVerificationToken as
-    | {
-        deleteMany: (args: { where: { userId: string; consumedAt: null } }) => Promise<unknown>;
-        create: (args: {
-          data: { userId: string; tokenHash: string; expiresAt: Date };
-        }) => Promise<unknown>;
-      }
-    | undefined;
-  const hasTokenStore =
-    Boolean(tokenStoreRaw) &&
-    typeof (tokenStoreRaw as { deleteMany?: unknown }).deleteMany === "function" &&
-    typeof (tokenStoreRaw as { create?: unknown }).create === "function";
-  if (hasTokenStore) {
-    const tokenStore = tokenStoreRaw as {
-      deleteMany: (args: { where: { userId: string; consumedAt: null } }) => Promise<unknown>;
-      create: (args: {
-        data: { userId: string; tokenHash: string; expiresAt: Date };
-      }) => Promise<unknown>;
-    };
-    await tokenStore.deleteMany({
-      where: {
-        userId,
-        consumedAt: null,
-      },
-    });
-    await tokenStore.create({
-      data: {
-        userId,
-        tokenHash: token,
-        expiresAt: new Date(Date.now() + 1000 * 60 * 30),
-      },
-    });
-  } else {
-    inMemoryVerificationTokens.set(token, {
-      userId,
-      expiresAtMs: Date.now() + 1000 * 60 * 30,
-      consumedAtMs: null,
-    });
-  }
-  await prisma.user.update({
-    where: { id: userId },
-    data: { verificationSentAt: new Date() },
-  });
-  return token;
-}
 
 async function resolveReportOrgId(userId: string, orgIdHeader: string | undefined) {
   if (orgIdHeader) {
@@ -143,7 +97,11 @@ v1.post("/auth/signup", async (c) => {
 
   const passwordHash = await Bun.password.hash(password, { algorithm: "bcrypt", cost: 10 });
   const user = await prisma.user.create({ data: { email, name, passwordHash } });
-  const verificationToken = await issueEmailVerificationToken(user.id);
+  const verificationOtp = await issueAndSendEmailVerificationOtp({
+    userId: user.id,
+    email: user.email,
+    name: user.name,
+  });
   const sessionToken = crypto.randomUUID();
   await prisma.session.create({
     data: {
@@ -157,7 +115,7 @@ v1.post("/auth/signup", async (c) => {
     {
       user: { id: user.id, email: user.email, name: user.name, emailVerified: false },
       sessionToken,
-      verificationToken,
+      ...(!isEmailConfigured() ? { verificationOtp } : {}),
     },
     201,
   );
@@ -268,69 +226,39 @@ v1.post("/auth/resend-verification", async (c) => {
   const user = await prisma.user.findUnique({ where: { id: userId } });
   if (!user) throw apiError(404, "NOT_FOUND", "User not found");
   if (user.emailVerifiedAt) return c.json({ ok: true, alreadyVerified: true });
-  const verificationToken = await issueEmailVerificationToken(userId);
-  return c.json({ ok: true, verificationToken });
+  try {
+    await issueAndSendEmailVerificationOtp({
+      userId: user.id,
+      email: user.email,
+      name: user.name,
+    });
+  } catch (error) {
+    throw apiError(
+      500,
+      "INTERNAL_ERROR",
+      error instanceof Error ? error.message : "Failed to send verification email",
+    );
+  }
+  return c.json({ ok: true });
 });
 
 v1.post("/auth/verify-email", async (c) => {
   const { userId } = await requireSession(c);
-  const body = await readJsonBody<{ token?: string }>(c);
-  const token = requireNonEmptyString(body.token, "token");
-  const tokenStoreRaw = (prisma as unknown as { emailVerificationToken?: unknown }).emailVerificationToken as
-    | {
-        findUnique: (args: { where: { tokenHash: string } }) => Promise<
-          | { id: string; userId: string; consumedAt: Date | null; expiresAt: Date }
-          | null
-        >;
-        update: (args: { where: { id: string }; data: { consumedAt: Date } }) => Promise<unknown>;
-      }
-    | undefined;
-  const hasTokenStore =
-    Boolean(tokenStoreRaw) &&
-    typeof (tokenStoreRaw as { findUnique?: unknown }).findUnique === "function" &&
-    typeof (tokenStoreRaw as { update?: unknown }).update === "function";
-  if (hasTokenStore) {
-    const tokenStore = tokenStoreRaw as {
-      findUnique: (args: { where: { tokenHash: string } }) => Promise<
-        | { id: string; userId: string; consumedAt: Date | null; expiresAt: Date }
-        | null
-      >;
-      update: (args: { where: { id: string }; data: { consumedAt: Date } }) => Promise<unknown>;
-    };
-    const verification = await tokenStore.findUnique({
-      where: { tokenHash: token },
-    });
-    if (!verification || verification.userId !== userId) {
-      throw apiError(400, "BAD_REQUEST", "Invalid verification token");
-    }
-    if (verification.consumedAt) {
-      throw apiError(409, "CONFLICT", "Verification token already used");
-    }
-    if (verification.expiresAt.getTime() <= Date.now()) {
-      throw apiError(410, "GONE", "Verification token expired");
-    }
-    await tokenStore.update({
-      where: { id: verification.id },
-      data: { consumedAt: new Date() },
-    });
-  } else {
-    const verification = inMemoryVerificationTokens.get(token);
-    if (!verification || verification.userId !== userId) {
-      throw apiError(400, "BAD_REQUEST", "Invalid verification token");
-    }
-    if (verification.consumedAtMs) {
-      throw apiError(409, "CONFLICT", "Verification token already used");
-    }
-    if (verification.expiresAtMs <= Date.now()) {
-      throw apiError(410, "GONE", "Verification token expired");
-    }
-    verification.consumedAtMs = Date.now();
-    inMemoryVerificationTokens.set(token, verification);
+  const body = await readJsonBody<{ token?: string; otp?: string }>(c);
+  const otp = optionalTrimmedString(body.otp) ?? optionalTrimmedString(body.token);
+  if (!otp) {
+    throw apiError(400, "VALIDATION_ERROR", "Verification code is required", [
+      { field: "otp", issue: "required" },
+    ]);
   }
-  await prisma.user.update({
-    where: { id: userId },
-    data: { emailVerifiedAt: new Date() },
-  });
+
+  try {
+    await verifyEmailOtp(userId, otp);
+  } catch (error) {
+    const mapped = mapVerificationError(error);
+    throw apiError(mapped.status, mapped.code, mapped.message);
+  }
+
   return c.json({ ok: true, emailVerified: true });
 });
 

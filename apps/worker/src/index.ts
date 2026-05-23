@@ -1,4 +1,4 @@
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient } from "../../api/src/generated/prisma";
 import { createLogger } from "@spotting/config/logger";
 import { runMaintenanceTick } from "./maintenance";
 

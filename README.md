@@ -1,113 +1,372 @@
 # Spotting
 
-Clean-room implementation workspace for the new Spotting platform.
+Open-source bug reporting platform with screen recording, console/network capture, and a Chrome extension. An alternative to Jam.dev and Marker.io.
 
-## Guardrails
+## Features
 
-- Reference behavior only from external AGPL systems.
-- Do not copy source code, migration files, tests, or assets.
-- Track architecture and provenance decisions in `/docs`.
+- **Dashboard** — orgs, invites, reports, public capture keys, settings
+- **API** — Hono + PostgreSQL + Prisma, presigned S3 uploads, email verification
+- **Worker** — background maintenance (expired invites, upload sessions)
+- **Capture SDK** — embeddable browser widget (`packages/sdk-js`)
+- **Chrome extension** — record and submit from any site (`apps/extension`)
 
-## Repository Layout
+## Repository layout
 
-- `apps/web` - dashboard frontend shell
-- `apps/api` - API service shell
-- `apps/worker` - async/background worker shell
-- `apps/extension` - Chrome MV3 extension (inject capture widget on any site)
-- `packages/ui` - shared UI primitives
-- `packages/sdk-js` - embeddable browser capture SDK (widget + MediaRecorder + network/console hooks)
-- `packages/config` - shared config/tooling
-- `infra/docker` - local infrastructure compose
+| Path | Description |
+|------|-------------|
+| `apps/web` | Next.js dashboard |
+| `apps/api` | Hono REST API |
+| `apps/worker` | Background worker |
+| `apps/extension` | Chrome MV3 extension |
+| `packages/sdk-js` | Browser capture SDK |
+| `packages/ui` | Shared UI components |
+| `packages/shared` | Shared config and types |
+| `infra/docker` | Local dev infrastructure (Postgres, Redis, MinIO) |
+| `docker-compose.yml` | Production stack (Postgres, Redis, API, worker, web) |
+| `scripts/install-ubuntu.sh` | One-command Ubuntu server installer |
 
-### Capture SDK & extension (Phase 1–2)
+---
 
-- See **[docs/capture-embed.md](./docs/capture-embed.md)** for public keys, CORS, build commands, and load-unpacked steps.
-- API routes: `POST /v1/capture/reports`, `POST /v1/capture/upload-sessions`, `POST /v1/capture/upload-sessions/:id/finalize` (Bearer `crk_…`).
-- Create keys: `POST /v1/orgs/:orgId/capture-keys` (owner/admin, session auth).
+## Local development
 
-## Bootstrap
+### Prerequisites
 
-1. Install dependencies: `bun install`
-2. Create local env file: copy `.env.example` to `.env`
-3. Run first-time demo setup:
-   - `bun run demo:setup`
-4. Start all app services:
-   - `bun run demo:start`
+- [Bun](https://bun.sh) 1.3+
+- [Docker](https://docs.docker.com/get-docker/) (for Postgres, Redis, MinIO)
 
-## Local Services
+### 1. Install dependencies
 
-- Web shell: `http://localhost:3001`
-- API root: `http://localhost:3000`
-- API health: `http://localhost:3000/healthz`
-- API ready: `http://localhost:3000/readyz`
+```bash
+git clone https://github.com/your-org/spotting.git
+cd spotting
+bun install
+```
 
-## First Demo Walkthrough
+### 2. Configure environment
 
-1. Open `http://localhost:3001`.
-2. Sign up with a new user.
-3. Create an organization and click it in **My Organizations** to set active org.
-4. Create a report, then refresh reports and open one report detail.
-5. Confirm upload session details appear in report detail (presigned upload URL generated).
-6. Use invites flow:
-   - create invite via API or existing UI flow,
-   - sign in as invited user,
-   - accept/reject invite from **Pending Invites**.
-7. Keep worker running and watch logs for periodic maintenance output:
-   - expired pending invites are auto-cancelled,
-   - expired non-finalized upload sessions are counted.
+```bash
+cp .env.example .env
+```
 
-## Phase 2 API Contract Notes
+For local dev, the root `.env` defaults are fine (Postgres on port `5433`, MinIO on `9000`). Optionally copy app-specific overrides:
 
-- API errors now follow a standard envelope:
-  - `{ "error": { "code": "...", "message": "...", "details": [] } }`
-- Common error codes include:
-  - `BAD_REQUEST`, `VALIDATION_ERROR`, `UNAUTHORIZED`, `FORBIDDEN`, `NOT_FOUND`, `CONFLICT`, `GONE`, `INTERNAL_ERROR`
-- Invalid enum/query values return deterministic `400` validation errors (no silent fallback).
-- Invite management endpoints (`/orgs/:orgId/invites`) now require owner/admin role.
-- Report status mutation endpoint (`PATCH /v1/reports/:reportId/status`) requires owner/admin role.
+```bash
+cp apps/api/.env.example apps/api/.env
+cp apps/web/.env.example apps/web/.env
+```
 
-## Phase 2 Web Notes
+### 3. Start infrastructure and database
 
-- Web client logic is now separated into modular client blocks (`api`, `state`, `render`, `actions`) to reduce coupling.
-- Report detail loading and upload session creation are now explicit separate actions.
-- UI uses action-scoped status areas and request dedupe guards for more predictable interactions.
+```bash
+bun run demo:setup
+```
 
-## Useful Commands
+This starts Docker infra, generates the Prisma client, and pushes the schema.
 
-- Start infra only: `bun run infra:up`
-- Stop infra only: `bun run infra:down`
-- Generate Prisma client: `bun run db:generate`
-- Push Prisma schema: `bun run db:push`
-- Run all quality gates: `bun run verify`
-- Run all tests: `bun run test`
-- API tests: `bun run --filter=@spotting/api test`
-- Worker tests: `bun run --filter=@spotting/worker test`
-- Web tests: `bun run --filter=@spotting/web test`
+### 4. Start all services
 
-## Testing and Reliability (Phase 3)
+```bash
+bun run demo:start
+```
 
-- API auth/session unit tests are now wired in `apps/api/src/auth.test.ts`.
-- API integration coverage for org/invite/report/upload flows is in `apps/api/src/v1.integration.test.ts`.
-- Worker maintenance behavior coverage is in `apps/worker/src/maintenance.test.ts`.
-- Web smoke coverage for client API helpers is in `apps/web/src/client/api.smoke.test.ts`.
-- Deterministic fixtures are defined in `apps/api/src/test/fixtures.ts`.
-- See `docs/TESTING.md` for local execution and troubleshooting guidance.
+Or run individually:
 
+```bash
+bun run dev:api      # API  → http://localhost:3000
+bun run dev:web      # Web  → http://localhost:3003
+bun run dev:worker   # Worker (maintenance ticks)
+```
 
+### Local URLs
 
+| Service | URL |
+|---------|-----|
+| Web dashboard | http://localhost:3003 |
+| API | http://localhost:3000 |
+| API health | http://localhost:3000/healthz |
+| API ready | http://localhost:3000/readyz |
+| MinIO console | http://localhost:9001 |
 
-Proposed Completion Phases
-Phase 1 — Demo Running End-to-End
-Local setup works, core flows run (auth, orgs, reports, invites, upload sessions, basic worker task).
+### Build extension
 
-Phase 2 — Product-Ready MVP
-Better UX structure, input validation consistency, role/permission cleanup, and stronger error handling.
+From the **repo root** (not `apps/extension`):
 
-Phase 3 — Quality & Reliability
-Automated tests (API + integration), lint/type/test gates, and stable seed/migration workflow.
+```bash
+bun run build:extension
+```
 
-Phase 4 — Operations & Security Hardening
-CI/CD, monitoring/logging, rate limiting, secret handling, backup/recovery, and production env strategy.
+Load unpacked from `apps/extension/dist` in Chrome.
 
-Phase 5 — Scale & Launch Readiness
-Performance optimization, worker queue strategy, deployment playbooks, documentation, and release checklist.
+See [docs/capture-embed.md](./docs/capture-embed.md) for SDK embed and public key setup.
+
+---
+
+## Production — Ubuntu 26 server
+
+Deploy with Docker, nginx, and Let's Encrypt SSL. After cloning the repo you only need to create `.env` and run the install script.
+
+### Prerequisites
+
+- Fresh **Ubuntu 26.04** VPS (2 GB+ RAM recommended)
+- Two DNS **A records** pointing to the server IP:
+  - `spotting.yourdomain.com` → web dashboard
+  - `api-spotting.yourdomain.com` → API
+- AWS S3 bucket + IAM credentials for uploads
+- AWS SES SMTP credentials for verification emails
+- Ports **22**, **80**, **443** open
+
+### Quick install (recommended)
+
+```bash
+# 1. Clone
+sudo mkdir -p /opt/spotting
+sudo chown "$USER":"$USER" /opt/spotting
+git clone https://github.com/your-org/spotting.git /opt/spotting
+cd /opt/spotting
+
+# 2. Configure (only step that requires editing)
+cp .env.example .env
+nano .env
+
+# 3. Install everything
+chmod +x scripts/install-ubuntu.sh
+sudo ./scripts/install-ubuntu.sh
+```
+
+The script installs Docker, builds containers, applies the DB schema, configures nginx, and obtains SSL certificates.
+
+---
+
+### Manual step-by-step (Ubuntu 26)
+
+Use this if you prefer to run each command yourself.
+
+#### 1. System packages
+
+```bash
+sudo apt-get update
+sudo apt-get install -y ca-certificates curl gnupg nginx certbot python3-certbot-nginx ufw git
+```
+
+#### 2. Install Docker
+
+```bash
+sudo install -m 0755 -d /etc/apt/keyrings
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo tee /etc/apt/keyrings/docker.asc > /dev/null
+sudo chmod a+r /etc/apt/keyrings/docker.asc
+
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] \
+  https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
+  sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+sudo apt-get update
+sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
+sudo systemctl enable --now docker
+```
+
+#### 3. Clone and configure
+
+```bash
+sudo mkdir -p /opt/spotting
+sudo chown "$USER":"$USER" /opt/spotting
+git clone https://github.com/your-org/spotting.git /opt/spotting
+cd /opt/spotting
+cp .env.example .env
+nano .env
+```
+
+**Required `.env` values** (see `.env.example` for full list):
+
+```bash
+# Domains (must match DNS)
+NEXT_PUBLIC_SITE_URL=https://spotting.yourdomain.com
+NEXT_PUBLIC_APP_URL=https://spotting.yourdomain.com
+NEXT_PUBLIC_SERVER_URL=https://api-spotting.yourdomain.com
+CORS_ORIGINS=https://spotting.yourdomain.com
+CERTBOT_EMAIL=admin@yourdomain.com
+
+# Secrets
+POSTGRES_PASSWORD=<long-random-password>
+BETTER_AUTH_SECRET=$(openssl rand -hex 32)
+BETTER_AUTH_URL=https://api-spotting.yourdomain.com
+
+# AWS S3 + SES
+S3_REGION=ap-south-1
+S3_BUCKET=your-bucket
+AWS_ACCESS_KEY_ID=...
+AWS_SECRET_ACCESS_KEY=...
+SMTP_REGION=ap-south-1
+SMTP_USERNAME=...
+SMTP_PASSWORD=...
+SMTP_FROM=Spotting <noreply@yourdomain.com>
+```
+
+Generate auth secret:
+
+```bash
+openssl rand -hex 32
+```
+
+#### 4. Start application
+
+```bash
+docker compose up -d --build
+docker compose exec -T api bun --cwd apps/api db:push
+```
+
+Verify locally on the server:
+
+```bash
+curl http://127.0.0.1:3000/healthz
+curl -I http://127.0.0.1:3001
+```
+
+#### 5. Configure nginx
+
+Web dashboard (`/etc/nginx/sites-available/spotting-web`):
+
+```nginx
+server {
+    listen 80;
+    listen [::]:80;
+    server_name spotting.yourdomain.com;
+
+    client_max_body_size 100m;
+
+    location / {
+        proxy_pass http://127.0.0.1:3001;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_read_timeout 300s;
+    }
+}
+```
+
+API (`/etc/nginx/sites-available/spotting-api`):
+
+```nginx
+server {
+    listen 80;
+    listen [::]:80;
+    server_name api-spotting.yourdomain.com;
+
+    client_max_body_size 100m;
+
+    location / {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 300s;
+    }
+}
+```
+
+Enable sites:
+
+```bash
+sudo rm -f /etc/nginx/sites-enabled/default
+sudo ln -sf /etc/nginx/sites-available/spotting-web /etc/nginx/sites-enabled/
+sudo ln -sf /etc/nginx/sites-available/spotting-api /etc/nginx/sites-enabled/
+sudo nginx -t
+sudo systemctl reload nginx
+```
+
+#### 6. Firewall
+
+```bash
+sudo ufw allow OpenSSH
+sudo ufw allow 'Nginx Full'
+sudo ufw enable
+```
+
+#### 7. Let's Encrypt SSL
+
+```bash
+sudo certbot --nginx \
+  --agree-tos \
+  --no-eff-email \
+  --email admin@yourdomain.com \
+  -d spotting.yourdomain.com \
+  -d api-spotting.yourdomain.com
+```
+
+Test renewal:
+
+```bash
+sudo certbot renew --dry-run
+```
+
+#### 8. Verify production
+
+```bash
+curl https://api-spotting.yourdomain.com/healthz
+curl -I https://spotting.yourdomain.com
+```
+
+Open the dashboard, sign up, and confirm the verification email arrives.
+
+---
+
+## Operations
+
+```bash
+# Logs
+docker compose logs -f
+docker compose logs -f api worker web
+
+# Restart
+docker compose restart
+
+# Rebuild after code update
+git pull
+docker compose up -d --build
+docker compose exec -T api bun --cwd apps/api db:push
+
+# Stop
+docker compose down
+```
+
+---
+
+## Development commands
+
+| Command | Description |
+|---------|-------------|
+| `bun run infra:up` | Start local Postgres, Redis, MinIO |
+| `bun run infra:down` | Stop local infra |
+| `bun run db:generate` | Generate Prisma client |
+| `bun run db:push` | Push schema to database |
+| `bun run verify` | Lint, typecheck, test, build |
+| `bun run test` | Run all tests |
+| `bun run build:extension` | Build Chrome extension |
+
+See [docs/TESTING.md](./docs/TESTING.md) for test and troubleshooting guidance.
+
+---
+
+## API overview
+
+- Auth: `POST /v1/auth/signup`, `signin`, `verify-email`, `resend-verification`
+- Orgs & invites: `/v1/orgs`, `/v1/orgs/:id/invites`
+- Reports: `GET/POST /v1/reports`, upload sessions, capture metadata
+- Capture (public key): `POST /v1/capture/reports`, upload session endpoints
+
+Errors use a standard envelope:
+
+```json
+{ "error": { "code": "BAD_REQUEST", "message": "...", "details": [] } }
+```
+
+---
+
+## License
+
+Add your license file at `/LICENSE` before public distribution.

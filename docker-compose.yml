@@ -1,0 +1,105 @@
+version: '3.8'
+
+services:
+  spotting-postgres:
+    image: postgres:16
+    container_name: spotting-postgres
+    restart: always
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-spotting}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    volumes:
+      - spotting_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7
+    container_name: spotting-redis
+    restart: always
+    volumes:
+      - spotting_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: spotting-api
+    restart: always
+    ports:
+      - "127.0.0.1:${API_PORT:-3000}:3000"
+    environment:
+      - NODE_ENV=production
+      - API_PORT=3000
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@spotting-postgres:5432/${POSTGRES_DB:-spotting}?schema=public
+      - REDIS_URL=redis://redis:6379
+      - CORS_ORIGINS=${CORS_ORIGINS}
+      - S3_REGION=${S3_REGION:-us-east-1}
+      - S3_BUCKET=${S3_BUCKET}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - S3_AUTO_CREATE_BUCKET=false
+      - SMTP_REGION=${SMTP_REGION}
+      - SMTP_FROM=${SMTP_FROM}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USER=${SMTP_USER}
+      - SMTP_PASS=${SMTP_PASS}
+      - SMTP_USERNAME=${SMTP_USERNAME}
+      - SMTP_PASSWORD=${SMTP_PASSWORD}
+      - MAIL_APP_NAME=${MAIL_APP_NAME:-Spotting}
+      - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET}
+      - BETTER_AUTH_URL=${BETTER_AUTH_URL}
+    depends_on:
+      spotting-postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  worker:
+    build:
+      context: .
+      dockerfile: apps/worker/Dockerfile
+    container_name: spotting-worker
+    restart: always
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@spotting-postgres:5432/${POSTGRES_DB:-spotting}?schema=public
+      - WORKER_INTERVAL_MS=${WORKER_INTERVAL_MS:-30000}
+    depends_on:
+      spotting-postgres:
+        condition: service_healthy
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        - NEXT_PUBLIC_SITE_URL=${NEXT_PUBLIC_SITE_URL}
+        - NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL}
+        - NEXT_PUBLIC_SERVER_URL=${NEXT_PUBLIC_SERVER_URL}
+        - NEXT_PUBLIC_GOOGLE_AUTH_ENABLED=${NEXT_PUBLIC_GOOGLE_AUTH_ENABLED:-false}
+    container_name: spotting-web
+    restart: always
+    ports:
+      - "127.0.0.1:${WEB_PORT:-3001}:3001"
+    environment:
+      - NODE_ENV=production
+      - WEB_PORT=3001
+      - SPOTTING_API_INTERNAL_URL=http://api:3000
+      - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET}
+      - BETTER_AUTH_URL=${BETTER_AUTH_URL}
+    depends_on:
+      - api
+
+volumes:
+  spotting_postgres_data:
+  spotting_redis_data:

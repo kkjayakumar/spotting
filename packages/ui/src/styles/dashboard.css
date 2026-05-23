@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Roboto+Mono:wght@400;500;600;700&display=swap');
+
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
@@ -235,4 +237,332 @@
 ::view-transition-new(root) {
   animation: none;
   mix-blend-mode: normal;
+}
+
+/* Google Theme & Modern Glassmorphism Typography Overhaul */
+@layer base {
+  .google-theme,
+  .google-theme * {
+    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+    letter-spacing: -0.01em !important;
+  }
+
+  .google-theme code,
+  .google-theme pre,
+  .google-theme kbd,
+  .google-theme samp,
+  .google-theme .font-mono,
+  .google-theme [class*="font-mono"] {
+    font-family: 'Roboto Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+    letter-spacing: 0em !important;
+  }
+}
+
+.google-theme {
+  /* Google Light Theme Colors */
+  --background: oklch(0.985 0.006 240);
+  --foreground: oklch(0.2 0.01 240);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.2 0.01 240);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.2 0.01 240);
+  --primary: oklch(0.55 0.18 250); /* Google Material Blue */
+  --primary-foreground: oklch(0.99 0 0);
+  --secondary: oklch(0.95 0.01 240); /* Google soft light grey-blue */
+  --secondary-foreground: oklch(0.25 0.15 250);
+  --muted: oklch(0.96 0.005 240);
+  --muted-foreground: oklch(0.45 0.01 240);
+  --accent: oklch(0.94 0.02 250); /* Accent highlight blue */
+  --accent-foreground: oklch(0.35 0.18 250);
+  --destructive: oklch(0.6 0.18 25); /* Google Red */
+  --destructive-foreground: oklch(0.99 0 0);
+  --border: oklch(0.9 0.01 240); /* Clean subtle border */
+  --input: oklch(0.9 0.01 240);
+  --ring: oklch(0.55 0.18 250);
+  --radius: 0.75rem; /* Soft round corners */
+
+  --sidebar: oklch(1 0 0);
+  --sidebar-foreground: oklch(0.2 0.01 240);
+  --sidebar-primary: oklch(0.55 0.18 250);
+  --sidebar-primary-foreground: oklch(0.99 0 0);
+  --sidebar-accent: oklch(0.95 0.01 240);
+  --sidebar-accent-foreground: oklch(0.25 0.15 250);
+  --sidebar-border: oklch(0.9 0.01 240);
+  --sidebar-ring: oklch(0.55 0.18 250);
+
+  /* Solid Premium Light Background */
+  background: #f4f6f9 !important;
+  background-attachment: fixed !important;
+}
+
+.dark .google-theme,
+.google-theme.dark {
+  /* Google Dark Theme Colors */
+  --background: oklch(0.12 0.01 245); /* Soft, beautiful dark charcoal-blue */
+  --foreground: oklch(0.9 0.005 240);
+  --card: oklch(0.18 0.012 245); /* Elegant lighter card */
+  --card-foreground: oklch(0.9 0.005 240);
+  --popover: oklch(0.18 0.012 245);
+  --popover-foreground: oklch(0.9 0.005 240);
+  --primary: oklch(0.8 0.08 240); /* Material Light Blue */
+  --primary-foreground: oklch(0.15 0.05 240);
+  --secondary: oklch(0.23 0.015 245);
+  --secondary-foreground: oklch(0.9 0.005 240);
+  --muted: oklch(0.22 0.01 245);
+  --muted-foreground: oklch(0.65 0.01 245);
+  --accent: oklch(0.25 0.03 245);
+  --accent-foreground: oklch(0.85 0.08 240);
+  --destructive: oklch(0.7 0.14 25);
+  --destructive-foreground: oklch(0.15 0.05 25);
+  --border: oklch(0.25 0.015 245);
+  --input: oklch(0.25 0.015 245);
+  --ring: oklch(0.8 0.08 240);
+
+  --sidebar: oklch(0.1 0.01 245);
+  --sidebar-foreground: oklch(0.9 0.005 240);
+  --sidebar-primary: oklch(0.8 0.08 240);
+  --sidebar-primary-foreground: oklch(0.15 0.05 240);
+  --sidebar-accent: oklch(0.18 0.012 245);
+  --sidebar-accent-foreground: oklch(0.9 0.005 240);
+  --sidebar-border: oklch(0.16 0.01 245);
+  --sidebar-ring: oklch(0.8 0.08 240);
+
+  /* Solid Premium Dark Background */
+  background: #0c0d11 !important;
+  background-attachment: fixed !important;
+}
+
+/* Base Glassmorphism Overlay on Top of Solid Canvas */
+.google-theme [data-sidebar="sidebar"],
+.google-theme header,
+.google-theme [class*="bg-sidebar"] {
+  background: rgba(255, 255, 255, 0.75) !important;
+  backdrop-filter: blur(20px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+  border-right: 1px solid rgba(0, 0, 0, 0.06) !important;
+}
+
+.dark .google-theme [data-sidebar="sidebar"],
+.dark .google-theme header,
+.dark .google-theme [class*="bg-sidebar"] {
+  background: rgba(16, 18, 23, 0.75) !important;
+  backdrop-filter: blur(20px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.05) !important;
+}
+
+/* Make inner layout wrappers clean and flat */
+.google-theme [class*="bg-background"],
+.google-theme main,
+.google-theme [class*="SidebarInset"],
+.google-theme [class*="sidebar-inset"] {
+  background-color: transparent !important;
+  background: transparent !important;
+}
+
+/* Translucent sleek inputs */
+.google-theme input,
+.google-theme select,
+.google-theme [class*="bg-input"] {
+  background: rgba(255, 255, 255, 0.6) !important;
+  border: 1px solid rgba(0, 0, 0, 0.08) !important;
+  backdrop-filter: blur(10px) !important;
+}
+
+.dark .google-theme input,
+.dark .google-theme select,
+.dark .google-theme [class*="bg-input"] {
+  background: rgba(16, 18, 23, 0.6) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  backdrop-filter: blur(10px) !important;
+}
+
+/* Active sidebar item highlighting */
+.google-theme [class*="SidebarMenuButton"][data-active="true"],
+.google-theme button[class*="active"] {
+  background-color: rgba(26, 115, 232, 0.1) !important;
+  color: #1a73e8 !important;
+}
+
+.dark .google-theme [class*="SidebarMenuButton"][data-active="true"],
+.dark .google-theme button[class*="active"] {
+  background-color: rgba(138, 180, 248, 0.15) !important;
+  color: #8ab4f8 !important;
+}
+
+/* ========================================================
+   DYNAMIC MULTI-COLOR ACCENTS SYSTEM FOR BUG CARDS
+   ======================================================== */
+
+.google-theme .rounded-lg.border.bg-card {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  border-radius: 0.75rem !important;
+  overflow: hidden !important;
+  background: rgba(255, 255, 255, 0.8) !important;
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+}
+
+.dark .google-theme .rounded-lg.border.bg-card {
+  background: rgba(20, 23, 30, 0.8) !important;
+}
+
+/* --- Card 1: Google Blue Accent --- */
+.google-theme .rounded-lg.border.bg-card:nth-child(5n+1) {
+  border: 1px solid rgba(26, 115, 232, 0.18) !important;
+  border-left: 5px solid #4285F4 !important;
+  box-shadow: 0 4px 15px 0 rgba(26, 115, 232, 0.03) !important;
+}
+.google-theme .rounded-lg.border.bg-card:nth-child(5n+1) .rounded-full {
+  background-color: #4285F4 !important;
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+}
+.google-theme .rounded-lg.border.bg-card:nth-child(5n+1):hover {
+  background: rgba(255, 255, 255, 0.95) !important;
+  border-color: rgba(26, 115, 232, 0.5) !important;
+  box-shadow: 0 12px 30px 0 rgba(26, 115, 232, 0.12) !important;
+  transform: translateY(-3px) !important;
+}
+.dark .google-theme .rounded-lg.border.bg-card:nth-child(5n+1) {
+  border: 1px solid rgba(138, 180, 248, 0.12) !important;
+  border-left: 5px solid #8ab4f8 !important;
+  box-shadow: 0 4px 15px 0 rgba(0, 0, 0, 0.2) !important;
+}
+.dark .google-theme .rounded-lg.border.bg-card:nth-child(5n+1) .rounded-full {
+  background-color: #8ab4f8 !important;
+  color: #0b2f61 !important;
+}
+.dark .google-theme .rounded-lg.border.bg-card:nth-child(5n+1):hover {
+  background: rgba(25, 30, 40, 0.9) !important;
+  border-color: rgba(138, 180, 248, 0.45) !important;
+  box-shadow: 0 12px 30px 0 rgba(138, 180, 248, 0.18) !important;
+  transform: translateY(-3px) !important;
+}
+
+/* --- Card 2: Google Red Accent --- */
+.google-theme .rounded-lg.border.bg-card:nth-child(5n+2) {
+  border: 1px solid rgba(234, 67, 53, 0.18) !important;
+  border-left: 5px solid #EA4335 !important;
+  box-shadow: 0 4px 15px 0 rgba(234, 67, 53, 0.03) !important;
+}
+.google-theme .rounded-lg.border.bg-card:nth-child(5n+2) .rounded-full {
+  background-color: #EA4335 !important;
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+}
+.google-theme .rounded-lg.border.bg-card:nth-child(5n+2):hover {
+  background: rgba(255, 255, 255, 0.95) !important;
+  border-color: rgba(234, 67, 53, 0.5) !important;
+  box-shadow: 0 12px 30px 0 rgba(234, 67, 53, 0.12) !important;
+  transform: translateY(-3px) !important;
+}
+.dark .google-theme .rounded-lg.border.bg-card:nth-child(5n+2) {
+  border: 1px solid rgba(242, 139, 130, 0.12) !important;
+  border-left: 5px solid #f28b82 !important;
+  box-shadow: 0 4px 15px 0 rgba(0, 0, 0, 0.2) !important;
+}
+.dark .google-theme .rounded-lg.border.bg-card:nth-child(5n+2) .rounded-full {
+  background-color: #f28b82 !important;
+  color: #601410 !important;
+}
+.dark .google-theme .rounded-lg.border.bg-card:nth-child(5n+2):hover {
+  background: rgba(35, 25, 25, 0.9) !important;
+  border-color: rgba(242, 139, 130, 0.45) !important;
+  box-shadow: 0 12px 30px 0 rgba(242, 139, 130, 0.18) !important;
+  transform: translateY(-3px) !important;
+}
+
+/* --- Card 3: Google Green Accent --- */
+.google-theme .rounded-lg.border.bg-card:nth-child(5n+3) {
+  border: 1px solid rgba(52, 168, 83, 0.18) !important;
+  border-left: 5px solid #34A853 !important;
+  box-shadow: 0 4px 15px 0 rgba(52, 168, 83, 0.03) !important;
+}
+.google-theme .rounded-lg.border.bg-card:nth-child(5n+3) .rounded-full {
+  background-color: #34A853 !important;
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+}
+.google-theme .rounded-lg.border.bg-card:nth-child(5n+3):hover {
+  background: rgba(255, 255, 255, 0.95) !important;
+  border-color: rgba(52, 168, 83, 0.5) !important;
+  box-shadow: 0 12px 30px 0 rgba(52, 168, 83, 0.12) !important;
+  transform: translateY(-3px) !important;
+}
+.dark .google-theme .rounded-lg.border.bg-card:nth-child(5n+3) {
+  border: 1px solid rgba(129, 201, 149, 0.12) !important;
+  border-left: 5px solid #81c995 !important;
+  box-shadow: 0 4px 15px 0 rgba(0, 0, 0, 0.2) !important;
+}
+.dark .google-theme .rounded-lg.border.bg-card:nth-child(5n+3) .rounded-full {
+  background-color: #81c995 !important;
+  color: #072f13 !important;
+}
+.dark .google-theme .rounded-lg.border.bg-card:nth-child(5n+3):hover {
+  background: rgba(25, 35, 25, 0.9) !important;
+  border-color: rgba(129, 201, 149, 0.45) !important;
+  box-shadow: 0 12px 30px 0 rgba(129, 201, 149, 0.18) !important;
+  transform: translateY(-3px) !important;
+}
+
+/* --- Card 4: Google Yellow/Orange Accent --- */
+.google-theme .rounded-lg.border.bg-card:nth-child(5n+4) {
+  border: 1px solid rgba(251, 188, 5, 0.18) !important;
+  border-left: 5px solid #FBBC05 !important;
+  box-shadow: 0 4px 15px 0 rgba(251, 188, 5, 0.03) !important;
+}
+.google-theme .rounded-lg.border.bg-card:nth-child(5n+4) .rounded-full {
+  background-color: #FBBC05 !important;
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+}
+.google-theme .rounded-lg.border.bg-card:nth-child(5n+4):hover {
+  background: rgba(255, 255, 255, 0.95) !important;
+  border-color: rgba(251, 188, 5, 0.5) !important;
+  box-shadow: 0 12px 30px 0 rgba(251, 188, 5, 0.12) !important;
+  transform: translateY(-3px) !important;
+}
+.dark .google-theme .rounded-lg.border.bg-card:nth-child(5n+4) {
+  border: 1px solid rgba(253, 214, 99, 0.12) !important;
+  border-left: 5px solid #fdd663 !important;
+  box-shadow: 0 4px 15px 0 rgba(0, 0, 0, 0.2) !important;
+}
+.dark .google-theme .rounded-lg.border.bg-card:nth-child(5n+4) .rounded-full {
+  background-color: #fdd663 !important;
+  color: #4b3600 !important;
+}
+.dark .google-theme .rounded-lg.border.bg-card:nth-child(5n+4):hover {
+  background: rgba(35, 30, 25, 0.9) !important;
+  border-color: rgba(253, 214, 99, 0.45) !important;
+  box-shadow: 0 12px 30px 0 rgba(253, 214, 99, 0.18) !important;
+  transform: translateY(-3px) !important;
+}
+
+/* --- Card 5: Google Purple Accent --- */
+.google-theme .rounded-lg.border.bg-card:nth-child(5n+5) {
+  border: 1px solid rgba(161, 66, 244, 0.18) !important;
+  border-left: 5px solid #a142f4 !important;
+  box-shadow: 0 4px 15px 0 rgba(161, 66, 244, 0.03) !important;
+}
+.google-theme .rounded-lg.border.bg-card:nth-child(5n+5) .rounded-full {
+  background-color: #a142f4 !important;
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+}
+.google-theme .rounded-lg.border.bg-card:nth-child(5n+5):hover {
+  background: rgba(255, 255, 255, 0.95) !important;
+  border-color: rgba(161, 66, 244, 0.5) !important;
+  box-shadow: 0 12px 30px 0 rgba(161, 66, 244, 0.12) !important;
+  transform: translateY(-3px) !important;
+}
+.dark .google-theme .rounded-lg.border.bg-card:nth-child(5n+5) {
+  border: 1px solid rgba(197, 138, 249, 0.12) !important;
+  border-left: 5px solid #c58af9 !important;
+  box-shadow: 0 4px 15px 0 rgba(0, 0, 0, 0.2) !important;
+}
+.dark .google-theme .rounded-lg.border.bg-card:nth-child(5n+5) .rounded-full {
+  background-color: #c58af9 !important;
+  color: #2b044d !important;
+}
+.dark .google-theme .rounded-lg.border.bg-card:nth-child(5n+5):hover {
+  background: rgba(30, 25, 35, 0.9) !important;
+  border-color: rgba(197, 138, 249, 0.45) !important;
+  box-shadow: 0 12px 30px 0 rgba(197, 138, 249, 0.18) !important;
+  transform: translateY(-3px) !important;
 }

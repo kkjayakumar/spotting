@@ -1,4 +1,4 @@
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient } from "../apps/api/src/generated/prisma";
 import { runMaintenanceTick } from "../apps/worker/src/maintenance";
 
 const iterations = Number(process.env.PROFILE_WORKER_ITERATIONS ?? 10);

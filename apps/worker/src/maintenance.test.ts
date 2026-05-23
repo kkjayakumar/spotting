@@ -1,5 +1,5 @@
 import { describe, expect, it, mock } from "bun:test";
-import { InvitationStatus } from "@prisma/client";
+import { InvitationStatus } from "../../api/src/generated/prisma";
 import { runMaintenanceTick } from "./maintenance";
 
 describe("runMaintenanceTick", () => {

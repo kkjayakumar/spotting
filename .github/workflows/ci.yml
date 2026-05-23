@@ -3,14 +3,104 @@ on:
   push:
     branches: [ main ]
   pull_request:
+    branches: [ main ]
+
 jobs:
-  validate:
+  lint-and-types:
+    name: Lint & Type Check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v2
-      - run: bun install
-      - run: bun run lint
-      - run: bun run check-types
-      - run: bun run test
-      - run: bun run build
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install Dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Run Linter
+        run: bun run lint
+
+      - name: Check TypeScript Types
+        run: bun run check-types
+
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install Dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Run Unit Tests
+        run: bun run test
+
+  playwright-tests:
+    name: Playwright E2E Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install Dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Get Playwright Version
+        id: playwright-version
+        run: |
+          PLAYWRIGHT_VERSION=$(bun pm ls | grep "@playwright/test" | head -n 1 | awk -F'@' '{print $NF}' || echo "latest")
+          if [ -z "$PLAYWRIGHT_VERSION" ]; then
+            PLAYWRIGHT_VERSION="latest"
+          fi
+          echo "version=$PLAYWRIGHT_VERSION" >> $GITHUB_OUTPUT
+        shell: bash
+
+      - name: Cache Playwright Browsers
+        id: cache-playwright
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ steps.playwright-version.outputs.version }}
+          restore-keys: |
+            ${{ runner.os }}-playwright-
+
+      - name: Install Playwright Browsers & Deps
+        if: steps.cache-playwright.outputs.cache-hit != 'true'
+        run: bunx playwright install --with-deps
+
+      - name: Install Playwright System Dependencies (if cached)
+        if: steps.cache-playwright.outputs.cache-hit == 'true'
+        run: bunx playwright install-deps
+
+      - name: Run Playwright Tests (Safe Check)
+        run: |
+          if [ -f "playwright.config.ts" ] || [ -f "playwright.config.js" ] || grep -q "playwright" package.json; then
+            bunx playwright test
+          else
+            echo "No Playwright configuration or scripts found in workspace. Skipping E2E test execution."
+          fi
+        shell: bash
+
+      - name: Upload Playwright Report
+        uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 30

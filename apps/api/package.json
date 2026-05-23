@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "bun --watch src/index.ts",
+    "dev": "bun --env-file=../../.env --env-file=.env --watch src/index.ts",
     "build": "tsc -p tsconfig.json",
     "lint": "tsc -p tsconfig.json --noEmit",
     "check-types": "tsc -p tsconfig.json --noEmit",
@@ -13,13 +13,16 @@
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1000.0",
+    "@aws-sdk/client-ses": "^3.1053.0",
     "@aws-sdk/s3-request-presigner": "^3.1000.0",
-    "@spotting/config": "workspace:*",
     "@prisma/client": "^6.6.0",
-    "hono": "^4.8.2"
+    "@spotting/config": "workspace:*",
+    "hono": "^4.8.2",
+    "nodemailer": "^8.0.7"
   },
   "devDependencies": {
     "@types/bun": "^1.3.4",
+    "@types/nodemailer": "^8.0.0",
     "prisma": "^6.6.0"
   }
 }

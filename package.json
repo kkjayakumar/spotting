@@ -17,6 +17,8 @@
     "check-types": "turbo run check-types",
     "lint": "turbo run lint",
     "test": "turbo run test",
+    "test:e2e": "bun --filter=@spotting/web test:e2e",
+    "test:e2e:ui": "bun --filter=@spotting/web test:e2e:ui",
     "verify": "bun run lint && bun run check-types && bun run test && bun run build",
     "infra:up": "docker compose -f infra/docker/docker-compose.yml --env-file .env up -d",
     "infra:down": "docker compose -f infra/docker/docker-compose.yml --env-file .env down",
@@ -28,6 +30,7 @@
     "profile:worker": "bun run --filter=@spotting/worker profile"
   },
   "devDependencies": {
+    "@playwright/test": "^1.60.0",
     "autocannon": "^8.0.0",
     "turbo": "^2.6.3",
     "typescript": "^5.9.3"

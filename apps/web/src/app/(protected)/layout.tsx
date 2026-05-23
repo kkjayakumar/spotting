@@ -1,6 +1,21 @@
+import { Plus_Jakarta_Sans, Roboto_Mono } from "next/font/google"
 import { redirect } from "next/navigation"
 
 import { getProtectedAuthData } from "@/app/(protected)/_lib/get-protected-auth-data"
+
+const sansFont = Plus_Jakarta_Sans({
+  subsets: ["latin"],
+  variable: "--font-google-sans",
+  weight: ["400", "500", "600", "700", "800"],
+  display: "swap",
+})
+
+const monoFont = Roboto_Mono({
+  subsets: ["latin"],
+  variable: "--font-google-mono",
+  weight: ["400", "500", "700"],
+  display: "swap",
+})
 
 export default async function ProtectedLayout({
   children,
@@ -13,5 +28,9 @@ export default async function ProtectedLayout({
     redirect("/login")
   }
 
-  return children
+  return (
+    <div className={`${sansFont.variable} ${monoFont.variable} google-theme h-full w-full`}>
+      {children}
+    </div>
+  )
 }

@@ -1,7 +1,12 @@
+import { loadApiEnv } from "./load-env";
+
+loadApiEnv();
+
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { HTTPException } from "hono/http-exception";
 import { createLogger } from "@spotting/config/logger";
+import { isEmailConfigured } from "./email";
 import { prisma } from "./db";
 import { v1 } from "./v1";
 
@@ -14,7 +19,10 @@ if (missingEnv.length > 0) {
   throw new Error(`Missing required environment variables: ${missingEnv.join(", ")}`);
 }
 
-logger.info("service_starting", { port });
+logger.info("service_starting", {
+  port,
+  emailConfigured: isEmailConfigured(),
+});
 
 app.use(
   "*",
@@ -24,6 +32,9 @@ app.use(
       "http://localhost:3003",
       "http://127.0.0.1:3001",
       "http://127.0.0.1:3003",
+      ...(process.env.CORS_ORIGINS?.split(",")
+        .map((origin) => origin.trim())
+        .filter(Boolean) ?? []),
     ],
     allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowHeaders: [

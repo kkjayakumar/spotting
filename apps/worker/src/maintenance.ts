@@ -1,4 +1,4 @@
-import { InvitationStatus, type PrismaClient } from "@prisma/client";
+import { InvitationStatus, type PrismaClient } from "../../api/src/generated/prisma";
 
 export type WorkerPrisma = Pick<PrismaClient, "invitation" | "uploadSession">;
 
