@@ -11,7 +11,8 @@ COPY packages ./packages
 
 RUN bun install --frozen-lockfile
 RUN bun --cwd apps/api prisma:generate
+RUN chmod +x apps/api/docker-entrypoint.sh
 
 EXPOSE 3000
 
-CMD ["bun", "run", "apps/api/src/index.ts"]
+ENTRYPOINT ["./apps/api/docker-entrypoint.sh"]

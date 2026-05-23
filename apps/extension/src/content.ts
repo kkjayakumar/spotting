@@ -13,27 +13,28 @@ import {
 
 import { installExtensionFetchBridge } from "./extension-fetch-bridge";
 
-export type MountMessage = {
-  type: "SPOTTING_MOUNT";
+export type MountPayload = {
   publicKey: string;
   apiBaseUrl: string;
   dashboardUrl?: string;
 };
 
+export type MountMessage = { type: "SPOTTING_MOUNT" } & MountPayload;
+
 export type UnmountMessage = { type: "SPOTTING_UNMOUNT" };
 
-export type OpenPanelMessage = { type: "SPOTTING_OPEN_PANEL" } & MountMessage;
-export type ScreenshotMessage = { type: "SPOTTING_SCREENSHOT" } & MountMessage;
-export type RecordMessage = { type: "SPOTTING_TOGGLE_RECORD" } & MountMessage;
-export type StartRecordMessage = { type: "SPOTTING_START_RECORD" } & MountMessage;
-export type StopRecordMessage = { type: "SPOTTING_STOP_RECORD" } & MountMessage;
+export type OpenPanelMessage = { type: "SPOTTING_OPEN_PANEL" } & MountPayload;
+export type ScreenshotMessage = { type: "SPOTTING_SCREENSHOT" } & MountPayload;
+export type RecordMessage = { type: "SPOTTING_TOGGLE_RECORD" } & MountPayload;
+export type StartRecordMessage = { type: "SPOTTING_START_RECORD" } & MountPayload;
+export type StopRecordMessage = { type: "SPOTTING_STOP_RECORD" } & MountPayload;
 export type RecordStateMessage = { type: "SPOTTING_RECORD_STATE" };
 export type CaptureStateMessage = { type: "SPOTTING_CAPTURE_STATE" };
 export type SubmitReportMessage = {
   type: "SPOTTING_SUBMIT_REPORT";
   title: string;
   description?: string;
-} & MountMessage;
+} & MountPayload;
 export type PingMessage = { type: "SPOTTING_PING" };
 
 type ContentMessage =
@@ -53,9 +54,9 @@ const CONTENT_SCRIPT_KEY = "__SPOTTING_CONTENT_SCRIPT_V1__";
 
 function registerContentScript() {
   let mounted = false;
-  let mountConfig: MountMessage | null = null;
+  let mountConfig: MountPayload | null = null;
 
-  async function ensureMounted(message: MountMessage) {
+  async function ensureMounted(message: MountPayload) {
     mountConfig = message;
     if (!mounted) {
       destroy();

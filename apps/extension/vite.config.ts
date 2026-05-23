@@ -27,7 +27,7 @@ export default defineConfig({
   plugins: [buildContentScript()],
   build: {
     outDir: "dist",
-    emptyDir: true,
+    emptyOutDir: true,
     rollupOptions: {
       input: {
         background: resolve(root, "src/background.ts"),

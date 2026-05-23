@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./tsconfig.base.json": "./tsconfig.base.json",
     "./logger": {
       "types": "./logger.d.ts",
       "default": "./logger.js"

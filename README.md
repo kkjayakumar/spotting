@@ -328,7 +328,11 @@ docker compose restart
 # Rebuild after code update
 git pull
 docker compose up -d --build
+# API entrypoint runs `db:push` on start; worker waits for API health.
+
+# Manual schema apply (if worker logs missing tables)
 docker compose exec -T api bun --cwd apps/api db:push
+docker compose restart worker
 
 # Stop
 docker compose down

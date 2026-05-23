@@ -96,16 +96,13 @@ start_application() {
   log "Building and starting Spotting containers"
   docker compose --env-file "${ENV_FILE}" up -d --build
 
-  log "Waiting for PostgreSQL"
+  log "Waiting for API (schema migrate + healthcheck)"
   for _ in $(seq 1 60); do
-    if docker compose exec -T spotting-postgres pg_isready -U "${POSTGRES_USER:-postgres}" -d "${POSTGRES_DB:-spotting}" >/dev/null 2>&1; then
+    if docker compose --env-file "${ENV_FILE}" ps api 2>/dev/null | grep -q "(healthy)"; then
       break
     fi
-    sleep 2
+    sleep 3
   done
-
-  log "Applying database schema"
-  docker compose exec -T api bun --cwd apps/api db:push
 }
 
 write_nginx_site() {
