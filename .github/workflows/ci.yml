@@ -86,7 +86,11 @@ jobs:
 
       - name: Install Playwright System Dependencies (if cached)
         if: steps.cache-playwright.outputs.cache-hit == 'true'
-        run: bunx playwright install-deps
+        run: bunx playwright install-deps chromium
+
+      - name: Ensure Playwright Chromium (cache may be stale)
+        if: steps.cache-playwright.outputs.cache-hit == 'true'
+        run: bunx playwright install chromium
 
       - name: Run Playwright Tests
         run: bun run test:e2e
