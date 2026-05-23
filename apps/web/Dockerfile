@@ -28,6 +28,7 @@ COPY apps ./apps
 COPY packages ./packages
 
 RUN bun install --frozen-lockfile
+RUN bun run build:extension
 RUN bun run build -- --filter=@spotting/web
 RUN cp -R apps/web/.next apps/web/.next-template
 RUN chmod +x apps/web/docker-entrypoint.sh

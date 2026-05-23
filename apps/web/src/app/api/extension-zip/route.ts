@@ -1,28 +1,11 @@
 import { authClient } from "@spotting/auth/client"
 import { headers } from "next/headers"
 import JSZip from "jszip"
-import { access, readdir, readFile } from "node:fs/promises"
+import { readdir, readFile } from "node:fs/promises"
 import path from "node:path"
 import { NextResponse } from "next/server"
 
-async function resolveExtensionDistDir(): Promise<string | null> {
-  const extra = process.env.SPOTTING_EXTENSION_DIST?.trim()
-  const candidates = [
-    extra && extra.length > 0 ? path.resolve(extra) : "",
-    path.resolve(process.cwd(), "..", "extension", "dist"),
-    path.resolve(process.cwd(), "extension-dist"),
-  ].filter(Boolean)
-
-  for (const dir of candidates) {
-    try {
-      await access(path.join(dir, "manifest.json"))
-      return dir
-    } catch {
-      /* try next */
-    }
-  }
-  return null
-}
+import { resolveExtensionDistDir } from "@/lib/extension-dist"
 
 async function addDirectoryToZip(
   zip: JSZip,

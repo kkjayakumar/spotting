@@ -1,33 +1,14 @@
 import type { Metadata } from "next"
-import { access } from "node:fs/promises"
-import path from "node:path"
 import { redirect } from "next/navigation"
 
 import { getProtectedAuthData } from "@/app/(protected)/_lib/get-protected-auth-data"
+import { extensionDistExists } from "@/lib/extension-dist"
 
 import { BrowserExtensionCard } from "../_components/browser-extension-card"
 
 export const metadata: Metadata = {
   title: "Browser extension",
   description: "Install the Spotting capture extension for Chromium browsers.",
-}
-
-async function extensionDistExists(): Promise<boolean> {
-  const extra = process.env.SPOTTING_EXTENSION_DIST?.trim()
-  const candidates = [
-    extra && extra.length > 0 ? path.resolve(extra) : "",
-    path.resolve(process.cwd(), "..", "extension", "dist"),
-  ].filter(Boolean)
-
-  for (const dir of candidates) {
-    try {
-      await access(path.join(dir, "manifest.json"))
-      return true
-    } catch {
-      /* continue */
-    }
-  }
-  return false
 }
 
 export default async function BrowserExtensionSettingsPage() {
