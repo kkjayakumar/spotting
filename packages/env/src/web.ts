@@ -1,11 +1,16 @@
 import { createEnv } from "@t3-oss/env-nextjs"
 import { z } from "zod"
 
+/** Local dev / CI defaults when env vars are not injected (e.g. `bun run verify`). */
+const DEFAULT_SITE_URL = "http://localhost:3003"
+const DEFAULT_APP_URL = "http://localhost:3003"
+const DEFAULT_SERVER_URL = "http://localhost:3000"
+
 export const env = createEnv({
   client: {
-    NEXT_PUBLIC_SITE_URL: z.url(),
-    NEXT_PUBLIC_APP_URL: z.url(),
-    NEXT_PUBLIC_SERVER_URL: z.url(),
+    NEXT_PUBLIC_SITE_URL: z.url().default(DEFAULT_SITE_URL),
+    NEXT_PUBLIC_APP_URL: z.url().default(DEFAULT_APP_URL),
+    NEXT_PUBLIC_SERVER_URL: z.url().default(DEFAULT_SERVER_URL),
     NEXT_PUBLIC_GOOGLE_AUTH_ENABLED: z
       .enum(["true", "false"])
       .default("false")
