@@ -4,7 +4,7 @@
  */
 (() => {
   const FLAG = "__SPOTTING_PAGE_CAPTURE_V1__";
-  const win = window as Window & { [key: string]: unknown };
+  const win = window as unknown as Record<string, unknown>;
   if (win[FLAG]) return;
   win[FLAG] = true;
 
@@ -55,6 +55,13 @@
     } catch {
       return "[unserializable body]";
     }
+  }
+
+  function serializeXhrBody(
+    body: Document | XMLHttpRequestBodyInit | null | undefined,
+  ): string | undefined {
+    if (body instanceof Document) return "[document]";
+    return serializeRequestBody(body ?? undefined);
   }
 
   async function readResponseBody(res: Response): Promise<string | undefined> {
@@ -114,12 +121,12 @@
       return original(...args);
     };
     try {
-      const proto = Console.prototype as Console & Record<string, unknown>;
+      const proto = Object.getPrototypeOf(console) as Record<string, unknown>;
       const protoFn = proto[level];
       if (typeof protoFn === "function") {
-        proto[level] = function (this: Console, ...args: unknown[]) {
+        proto[level] = function (this: unknown, ...args: unknown[]) {
           pushConsole(level, args);
-          return protoFn.apply(this, args);
+          return (protoFn as (...args: unknown[]) => unknown).apply(this, args);
         };
       }
     } catch {
@@ -257,7 +264,7 @@
     };
     const method = xhr.__spotting_method ?? "GET";
     const url = xhr.__spotting_url ?? "";
-    xhr.__spotting_body = serializeRequestBody(body ?? undefined);
+    xhr.__spotting_body = serializeXhrBody(body);
 
     const done = () => {
       const responseHeaders: Record<string, string> = {};

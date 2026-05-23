@@ -73,7 +73,7 @@ export function installPageCaptureBridge(): void {
 export async function ensurePageWorldCapture(): Promise<void> {
   const runtime = getChromeRuntime();
   if (!runtime) return;
-  const win = window as Window & { [key: string]: unknown };
+  const win = window as unknown as Record<string, unknown>;
   if (win[INJECTED_FLAG]) return;
   if (!injectPromise) {
     installPageCaptureBridge();

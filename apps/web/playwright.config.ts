@@ -1,5 +1,12 @@
 import { defineConfig, devices } from '@playwright/test';
 
+const e2eEnv = {
+  NEXT_PUBLIC_SITE_URL: 'http://localhost:3003',
+  NEXT_PUBLIC_APP_URL: 'http://localhost:3003',
+  NEXT_PUBLIC_SERVER_URL: 'http://localhost:3000',
+  NEXT_PUBLIC_GOOGLE_AUTH_ENABLED: 'false',
+};
+
 export default defineConfig({
   testDir: './e2e',
   fullyParallel: true,
@@ -8,7 +15,7 @@ export default defineConfig({
   workers: process.env.CI ? 1 : undefined,
   reporter: 'html',
   use: {
-    baseURL: 'http://localhost:3003',
+    baseURL: e2eEnv.NEXT_PUBLIC_APP_URL,
     trace: 'on-first-retry',
   },
   projects: [
@@ -20,9 +27,13 @@ export default defineConfig({
   webServer: {
     command: 'bun run dev',
     cwd: '.',
-    url: 'http://localhost:3003',
+    url: e2eEnv.NEXT_PUBLIC_APP_URL,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
+    env: {
+      ...process.env,
+      ...e2eEnv,
+    },
   },
   testMatch: '**/*.spec.ts',
 });
