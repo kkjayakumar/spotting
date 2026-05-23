@@ -74,6 +74,7 @@ main() {
   : "${NEXT_PUBLIC_DEMO_URL:=}"
   : "${NEXT_PUBLIC_POSTHOG_KEY:=}"
   : "${NEXT_PUBLIC_POSTHOG_HOST:=}"
+  : "${SPOTTING_API_INTERNAL_URL:=http://api:3000}"
 
   prepare_build_output
 
@@ -88,6 +89,12 @@ main() {
   replace_runtime_env_value "NEXT_PUBLIC_DEMO_URL" "$NEXT_PUBLIC_DEMO_URL"
   replace_runtime_env_value "NEXT_PUBLIC_POSTHOG_KEY" "$NEXT_PUBLIC_POSTHOG_KEY"
   replace_runtime_env_value "NEXT_PUBLIC_POSTHOG_HOST" "$NEXT_PUBLIC_POSTHOG_HOST"
+
+  # Next.js bakes /v1 rewrite targets at build time; patch for Docker networking.
+  api_internal="$(printf '%s' "$SPOTTING_API_INTERNAL_URL" | sed 's#/$##')"
+  if [ -f "${TARGET_DIR}/routes-manifest.json" ]; then
+    sed -i "s#http://127.0.0.1:3000#${api_internal}#g" "${TARGET_DIR}/routes-manifest.json"
+  fi
 
   exec "$@"
 }
