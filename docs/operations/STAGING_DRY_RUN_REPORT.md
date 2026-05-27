@@ -8,12 +8,12 @@ Dry-run validation for Spotting release readiness using local/staging-like envir
 
 - Web: `http://localhost:3001`
 - API: `http://localhost:3000`
-- Worker: running via `bun run demo:start`
+- Worker: running via `npm run demo:start`
 - Infra: Postgres/Redis/MinIO via Docker compose
 
 ## Executed Validation
 
-- Full quality gate run: `bun run verify`
+- Full quality gate run: `npm run verify`
   - lint: pass
   - check-types: pass
   - tests: pass

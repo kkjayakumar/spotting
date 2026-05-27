@@ -1,41 +1,28 @@
-/**
- * Captures a single video frame via getDisplayMedia (user picks tab/window).
- * Returns PNG blob or null if cancelled.
- */
-export async function captureScreenshotPng(): Promise<Blob | null> {
-  if (typeof navigator === "undefined" || !navigator.mediaDevices?.getDisplayMedia) {
-    throw new Error("Screen capture is not supported in this browser.");
-  }
+import { isUserGestureMediaError, requestDisplayMediaStream } from "./display-media";
 
-  let stream: MediaStream | null = null;
-  try {
-    try {
-      stream = await navigator.mediaDevices.getDisplayMedia({
-        video: true,
-        audio: false,
-        preferCurrentTab: true,
-      } as MediaStreamConstraints & { preferCurrentTab?: boolean });
-    } catch {
-      stream = await navigator.mediaDevices.getDisplayMedia({
-        video: true,
-        audio: false,
-      });
-    }
-  } catch (e) {
-    const err = e as DOMException;
-    if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") {
-      throw new Error(
+function mapDisplayMediaError(error: unknown): Error {
+  if (error instanceof DOMException) {
+    if (error.name === "NotAllowedError" || error.name === "PermissionDeniedError") {
+      return new Error(
         "Screen capture was blocked. Allow screen sharing when prompted, or check browser permissions.",
       );
     }
-    if (err.name === "AbortError") {
-      return null;
+    if (error.name === "AbortError") {
+      return new Error("Screenshot cancelled.");
     }
-    throw new Error(
-      err.message || "Could not start screen capture for screenshot.",
-    );
+    if (isUserGestureMediaError(error)) {
+      return new Error(
+        "Safari requires a direct click on the page to capture the screen. Use the on-page prompt or widget button.",
+      );
+    }
   }
+  if (error instanceof Error) return error;
+  return new Error("Could not start screen capture for screenshot.");
+}
 
+export async function captureScreenshotFromStream(
+  stream: MediaStream,
+): Promise<Blob | null> {
   const track = stream.getVideoTracks()[0];
   if (!track) {
     stream.getTracks().forEach((t) => t.stop());
@@ -74,5 +61,32 @@ export async function captureScreenshotPng(): Promise<Blob | null> {
     return blob;
   } finally {
     stream.getTracks().forEach((t) => t.stop());
+  }
+}
+
+/** Prefer requestDisplayMediaStream() from a click handler, then captureScreenshotFromStream(). */
+export async function captureScreenshotPng(): Promise<Blob | null> {
+  try {
+    const stream = await requestDisplayMediaStream();
+    return await captureScreenshotFromStream(stream);
+  } catch (error) {
+    if (error instanceof Error && error.message === "Screenshot cancelled.") {
+      return null;
+    }
+    throw mapDisplayMediaError(error);
+  }
+}
+
+export async function captureScreenshotFromStreamPromise(
+  streamPromise: Promise<MediaStream>,
+): Promise<Blob | null> {
+  try {
+    const stream = await streamPromise;
+    return await captureScreenshotFromStream(stream);
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      return null;
+    }
+    throw mapDisplayMediaError(error);
   }
 }

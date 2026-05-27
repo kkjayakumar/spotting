@@ -1,4 +1,11 @@
+/**
+ * Spotting data-table shared types.
+ * Copyright (C) 2026 KK Jayakumar
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ */
+
 import type { ColumnSort, Row, RowData } from "@tanstack/react-table"
+
 import type { DataTableConfig } from "../config/data-table"
 import type { FilterItemSchema } from "../lib/parsers"
 

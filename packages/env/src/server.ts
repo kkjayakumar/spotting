@@ -5,9 +5,13 @@ import { z } from "zod"
 export const env = createEnv({
   server: {
     DATABASE_URL: z.string().min(1),
-    BETTER_AUTH_SECRET: z.string().min(32),
-    BETTER_AUTH_URL: z.url(),
-    BETTER_AUTH_COOKIE_DOMAIN: z.string().min(1).optional(),
+    SPOTTING_AUTH_SECRET: z.string().min(32),
+    SPOTTING_AUTH_URL: z.url(),
+    SPOTTING_AUTH_COOKIE_DOMAIN: z.string().min(1).optional(),
+    SPOTTING_ACCEPT_LEGACY_CRK_KEYS: z
+      .enum(["true", "false"])
+      .default("true")
+      .transform((v) => v === "true"),
     ALLOWED_SIGNUP_DOMAINS: z
       .string()
       .optional()

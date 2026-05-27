@@ -56,6 +56,8 @@ export async function serializeReportForApi<
     pageUrl?: string | null;
     metadataJson?: unknown;
     uploadSessions?: UploadSessionLike[];
+    group?: { id: string; name: string } | null;
+    groupId?: string | null;
   },
 >(report: T, options?: { canEdit?: boolean }) {
   const meta = asRecord(report.metadataJson) ?? {};
@@ -63,12 +65,15 @@ export async function serializeReportForApi<
     ? await resolvePrimaryArtifact(report.uploadSessions)
     : null;
 
-  const { uploadSessions: _sessions, ...rest } = report as T & {
+  const { uploadSessions: _sessions, group, ...rest } = report as T & {
     uploadSessions?: UploadSessionLike[];
+    group?: { id: string; name: string } | null;
   };
 
   return {
     ...rest,
+    groupId: report.groupId ?? group?.id ?? null,
+    group: group ? { id: group.id, name: group.name } : null,
     url: report.pageUrl ?? undefined,
     tags: Array.isArray(meta.tags)
       ? meta.tags.filter((tag): tag is string => typeof tag === "string")

@@ -2,7 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query"
 
-import { orpc } from "@/utils/orpc"
+import { reportQueries } from "@/lib/api"
 import type { PublicKeysSnapshot } from "../types"
 
 export function usePublicKeysData(
@@ -10,7 +10,7 @@ export function usePublicKeysData(
   organizationId: string
 ) {
   return useQuery({
-    ...orpc.captureKey.list.queryOptions(organizationId),
+    ...reportQueries.captureKey.list.queryOptions(organizationId),
     initialData: initialKeys,
     // Keep SSR HTML aligned with the first client render; refetch after stale window.
     staleTime: 60_000,

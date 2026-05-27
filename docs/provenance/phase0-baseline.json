@@ -1,0 +1,394 @@
+{
+  "generated_at": "2026-05-25",
+  "description": "Phase 0 baseline. CI fails while identical files retain phase0_sha256. Similarity entries tracked until Phase 2/3 rewrites land.",
+  "identical_files": [
+    {
+      "path": "apps/web/src/app/(protected)/onboarding/layout.tsx",
+      "phase0_sha256": "c39521577160503dcb32a6caea3d21f116de0516c554a0b04532345dc3c3fea9",
+      "status": "rewritten",
+      "phase": 1,
+      "rewritten_sha256": "c76309ea9de5dbb059262c3a2296c95f2c7a7ecde88f9c7d14473ff8e17b55e5",
+      "rewritten_at": "2026-05-25"
+    },
+    {
+      "path": "apps/web/src/app/(protected)/onboarding/page.tsx",
+      "phase0_sha256": "584288def886314ea8259de1b259e6fc453668b554d0b9c1170832069551dfec",
+      "status": "rewritten",
+      "phase": 1,
+      "rewritten_sha256": "ed5ea45090d99e1ca29b5b552bb10a08bd008567b45e14e7af74d35a578b911b",
+      "rewritten_at": "2026-05-25"
+    },
+    {
+      "path": "apps/web/src/app/invite/[invitationId]/page.tsx",
+      "phase0_sha256": "3c27b44a3675cc26aa14977996089917fcc3590e9eeffc1727e492a6964d20a9",
+      "status": "rewritten",
+      "phase": 1,
+      "rewritten_sha256": "bb7fd6800589bf69ce49862e0a8412e74d92fec6984400afd188c52896764bd9",
+      "rewritten_at": "2026-05-25"
+    },
+    {
+      "path": "apps/web/src/app/s/layout.tsx",
+      "phase0_sha256": "fee51a2a3fdbbdc2d4c903a27db9e3825c40787d7134939e50d7c4c32472cbe2",
+      "status": "rewritten",
+      "phase": 1,
+      "rewritten_sha256": "cace373020ffbce586d84806160b59f3013778c6fb6308f2b3b7ad64548f8776",
+      "rewritten_at": "2026-05-25"
+    },
+    {
+      "path": "apps/web/src/app/s/[id]/page.tsx",
+      "phase0_sha256": "d7e8074a136c40275870279f533b9d8f17c6774bda4725e9c811ff109b24accd",
+      "status": "rewritten",
+      "phase": 1,
+      "rewritten_sha256": "90dfb2f79db98c6b1ed07a3b5ebc89fd8be58de9eb4215d6035ae03ad670c484",
+      "rewritten_at": "2026-05-25"
+    },
+    {
+      "path": "apps/web/src/app/s/[id]/_components/reproduction-steps.ts",
+      "phase0_sha256": "1bf9c3712a9aed93402a499c41679c7a2d8e4a146fe38285433b557a762891d7",
+      "status": "rewritten",
+      "phase": 1,
+      "rewritten_sha256": "14d1d2c77c6d613fd588d2fb491f0f2d1086b49b25e25e11be4bc8720b5d5b1c",
+      "rewritten_at": "2026-05-25"
+    },
+    {
+      "path": "apps/web/src/app/s/[id]/_components/network-requests-panel/types.ts",
+      "phase0_sha256": "0007a985fbe6f6939849c764a6a855840a44381094e8e66686a9cc86f86c918b",
+      "status": "rewritten",
+      "phase": 1,
+      "rewritten_sha256": "7d6ae9b550b18101ef2e6b17d3100060a24ccd9df020997bfb222fb06875e287",
+      "rewritten_at": "2026-05-25"
+    },
+    {
+      "path": "apps/web/src/lib/auth.ts",
+      "phase0_sha256": "36a4117347b00fcde62cde0b73cbd875d881da5dcd47c2b31112aa6dc7cf78e0",
+      "status": "rewritten",
+      "phase": 1,
+      "rewritten_sha256": "d788031431ebc85af8c8876056578f490214c5171ebbd7590b37ea99d01fcdfb",
+      "rewritten_at": "2026-05-25"
+    },
+    {
+      "path": "apps/web/src/lib/organization.ts",
+      "phase0_sha256": "c4a73c9e977e310d0ec9de897910af282ddfae7b8a36dd08ea11fdb4d8de27c9",
+      "status": "rewritten",
+      "phase": 1,
+      "rewritten_sha256": "4f215d0c40f65f910f7ebbfbbed60291a93812b6ed54a7f3091878d75b25d6f6",
+      "rewritten_at": "2026-05-25"
+    },
+    {
+      "path": "apps/web/src/lib/schema/auth.ts",
+      "phase0_sha256": "3a90a2023662e69b0fed43f6d921fb679244aefcdce7ded76bba47c0ba85def7",
+      "status": "rewritten",
+      "phase": 1,
+      "rewritten_sha256": "55fcdf2982eaca77c8559fb85c34ebaf9338c8d653d957ded8813576151261e0",
+      "rewritten_at": "2026-05-25"
+    },
+    {
+      "path": "apps/web/src/lib/schema/organization.ts",
+      "phase0_sha256": "782ad97ab3dc8a2e64fc5388d48887a963a116a440632234dcd582b6cf61274d",
+      "status": "rewritten",
+      "phase": 1,
+      "rewritten_sha256": "9c2f9b16476a67e7728829a05a0759817b65476ba13da545ad38b43754273fdd",
+      "rewritten_at": "2026-05-25"
+    },
+    {
+      "path": "packages/shared/src/config/pagination.ts",
+      "phase0_sha256": "709ef90d00c1833634395c6c4a65528b9aa47ee60ea6a2cbf2558c0ec6d38b03",
+      "status": "rewritten",
+      "phase": 1,
+      "rewritten_sha256": "d5028ef1d2074540de433642beb7d59d463456f7fc6766e50470b7789790d5b4",
+      "rewritten_at": "2026-05-25"
+    },
+    {
+      "path": "packages/shared/src/config/placeholders.ts",
+      "phase0_sha256": "e7f17586953dbf9d3671d1aea7425dbd971a34280cc6110eacfde91b7ebbb266",
+      "status": "rewritten",
+      "phase": 1,
+      "rewritten_sha256": "20136e73604efd1f3478993a23cb8e66355a51d511eaf1be5b56599334c2915b",
+      "rewritten_at": "2026-05-25"
+    },
+    {
+      "path": "packages/shared/src/lib/errors.ts",
+      "phase0_sha256": "7d166e4c05c4eee45692d75e4912563890f4c2a8078b949001ec3c28b8a12dea",
+      "status": "rewritten",
+      "phase": 1,
+      "rewritten_sha256": "014d82e50bf0ee2328907e6f72b87537eadb3a600dfa6adfc720e9a5cdbd9114",
+      "rewritten_at": "2026-05-25"
+    },
+    {
+      "path": "packages/shared/src/lib/posthog.ts",
+      "phase0_sha256": "34fdab8967f7efeca706bfec1344a55b46972b40d4640a61cc3253487630ccd6",
+      "status": "rewritten",
+      "phase": 1,
+      "rewritten_sha256": "1c825754e2686e70f56a990796130fb665795769fdd52644454cd0db7dd9931f",
+      "rewritten_at": "2026-05-25"
+    },
+    {
+      "path": "packages/shared/src/lib/server/pagination.ts",
+      "phase0_sha256": "4b8e549aca5a7a4eec43fa2de5fc8e3e50911ec4cc7c1c1833a8be3450184194",
+      "status": "rewritten",
+      "phase": 1,
+      "rewritten_sha256": "5641034f7165181b7b49c6c10d01a9b90ad7e43c641e236c1e591c9c016856dc",
+      "rewritten_at": "2026-05-25"
+    },
+    {
+      "path": "packages/shared/src/lib/server/retry-on-unique-violation.ts",
+      "phase0_sha256": "0410a2d82bf917ebff1c231123d671a67b9eac383e51dc91eb72dc26ec9e4f8e",
+      "status": "rewritten",
+      "phase": 1,
+      "rewritten_sha256": "1cb0c98f80e988df0f00f36d5a84a5a22b39876138d5a3f11435a6bbd8fbe6f5",
+      "rewritten_at": "2026-05-25"
+    },
+    {
+      "path": "packages/ui/src/components/icons.tsx",
+      "phase0_sha256": "440e6daccfeb8d67d40b0cfd12b307f249daf87b9a8414756676da78c1a0601e",
+      "status": "rewritten",
+      "phase": 1,
+      "rewritten_sha256": "14dff2f09d00d7e2df408e746fbe92e7fe1dde532e1a653aebb5ba97b1a98932",
+      "rewritten_at": "2026-05-25"
+    },
+    {
+      "path": "packages/ui/src/components/loader.tsx",
+      "phase0_sha256": "beef0efe26eb4ee13a405e065017a4f724435cc5b61363a40f0c84dafd59f2f9",
+      "status": "rewritten",
+      "phase": 1,
+      "rewritten_sha256": "23df6e04c0a952f00bea3d27421689359cfc132594a594bf54566cc5ceeb2b16",
+      "rewritten_at": "2026-05-25"
+    },
+    {
+      "path": "packages/ui/src/components/pricing-plans.tsx",
+      "phase0_sha256": "18d389571ab7f4c4373d47a5d02c066b8aa8e9b9eba6999c61bd70d2322623e0",
+      "status": "rewritten",
+      "phase": 1,
+      "rewritten_sha256": "89dbf61fa7069b921569e2827f27e63056a810741df57f0e9c22700848c55ad3",
+      "rewritten_at": "2026-05-25"
+    },
+    {
+      "path": "packages/ui/src/components/theme-provider.tsx",
+      "phase0_sha256": "5322a784b08200507b4ba217c7ebc5b8f033254e86a8a150e45de7055e74cf67",
+      "status": "rewritten",
+      "phase": 1,
+      "rewritten_sha256": "23f795f60eac3748577a4cf61edc5ea6015912538bfe206057c6557ec2ba9ddf",
+      "rewritten_at": "2026-05-25"
+    },
+    {
+      "path": "packages/ui/src/components/magicui/highlighter.tsx",
+      "phase0_sha256": "f82b35a5c7a0ae25029be7d6e71b97247d37c9c78ebda092677d50520d179171",
+      "status": "rewritten",
+      "phase": 1,
+      "rewritten_sha256": "6e5cadc506e1ceb2f59664d6efda7ac3b2fd15af55d9dc1452888a86517cb351",
+      "rewritten_at": "2026-05-25"
+    },
+    {
+      "path": "packages/ui/src/components/ui/collapsible.tsx",
+      "phase0_sha256": "457c783423ecbe4dd9f43ab32836d1e9d41bba4e66d7f7f71b6b1c3a2cd94178",
+      "status": "rewritten",
+      "phase": 1,
+      "rewritten_sha256": "511afe7b17cceb7aaa77fc4bce6d8fde9624e97f4643f436509e0adeea73a71d",
+      "rewritten_at": "2026-05-25"
+    },
+    {
+      "path": "packages/ui/src/components/ui/sonner.tsx",
+      "phase0_sha256": "a87b8badbf8196efa6648362face66527e143ad54e778d04b1d1e159b8609ec2",
+      "status": "rewritten",
+      "phase": 1,
+      "rewritten_sha256": "bd2407df0d9ace3ec6bf1efa747edfed01dc0797cf93d86fbab4811cb1f2b4a2",
+      "rewritten_at": "2026-05-25"
+    },
+    {
+      "path": "packages/ui/src/config/data-table.ts",
+      "phase0_sha256": "c0b6f255c1e06cb95faba118b2419cd3e96379a0f66346bf29e950ef6145ae79",
+      "status": "rewritten",
+      "phase": 1,
+      "rewritten_sha256": "ae7b347dccd1fd7cf20cb73032aab8422e3c2a8d1de3973ab9160a2b30856c6b",
+      "rewritten_at": "2026-05-25"
+    },
+    {
+      "path": "packages/ui/src/hooks/use-callback-ref.ts",
+      "phase0_sha256": "3b623f20de02b3fad80c1d972a35ad94116a699c1c0340b0c42f8683a9f23f26",
+      "status": "rewritten",
+      "phase": 1,
+      "rewritten_sha256": "69708bb91a45ef795bce7ce585034ee6aa1534feb644da6bb86309815df8b66f",
+      "rewritten_at": "2026-05-25"
+    },
+    {
+      "path": "packages/ui/src/hooks/use-debounce.ts",
+      "phase0_sha256": "07e8b7a99a8508c756b9d42bdcdeee73c467c24fde2845f9cbac4215de83a2df",
+      "status": "rewritten",
+      "phase": 1,
+      "rewritten_sha256": "13c6788211167fbf7869b7941542e6e709fe2b5fea579c565d74b36bdd40b81a",
+      "rewritten_at": "2026-05-25"
+    },
+    {
+      "path": "packages/ui/src/hooks/use-local-storage.ts",
+      "phase0_sha256": "b6f3a248b543911b811d911e49b00912ebbc8946bf5e957fa345b22d5ed36592",
+      "status": "rewritten",
+      "phase": 1,
+      "rewritten_sha256": "c92a936acbc8ba6f33cdb4ad7700b2cda938fb75484c4ee70f6d7c815ba24acc",
+      "rewritten_at": "2026-05-25"
+    },
+    {
+      "path": "packages/ui/src/hooks/use-mobile.ts",
+      "phase0_sha256": "d2377fbad5ad2bdf7fa896a68c36ac8bf4aa74a974b2061f77b41ae58d623001",
+      "status": "rewritten",
+      "phase": 1,
+      "rewritten_sha256": "adf48f04989cbaee66e515d6c3b48b7728283d739444f4ef2f7ca2bae8f1da39",
+      "rewritten_at": "2026-05-25"
+    },
+    {
+      "path": "packages/ui/src/lib/compose-refs.ts",
+      "phase0_sha256": "549acd5d45031d7f7f64c6e68d887dddcf4f51670eccbb403cf173aa46a1f55b",
+      "status": "rewritten",
+      "phase": 1,
+      "rewritten_sha256": "7a9ff2e02f1ec207fbca74c960a84fa80b2a1441efa3bbfe1f770d3eafb591ff",
+      "rewritten_at": "2026-05-25"
+    },
+    {
+      "path": "packages/ui/src/lib/data-table.ts",
+      "phase0_sha256": "1c75300c82c41f610788e5066effa81f51a700f5b205b9220530d4788aa4fcd1",
+      "status": "rewritten",
+      "phase": 1,
+      "rewritten_sha256": "bb5023ba94a9e5994b35d2f1272f9b8142f1f241379edd57fb5976677119251e",
+      "rewritten_at": "2026-05-25"
+    },
+    {
+      "path": "packages/ui/src/lib/format.ts",
+      "phase0_sha256": "c7bcf26c7745315ddcb53f951ac18641ff6c31e8c08b74c05f33ee6d1e189153",
+      "status": "rewritten",
+      "phase": 1,
+      "rewritten_sha256": "d6222ecb661347820ec1051700af9827ef3426e77bf198951b70c0b94830fe30",
+      "rewritten_at": "2026-05-25"
+    },
+    {
+      "path": "packages/ui/src/lib/id.ts",
+      "phase0_sha256": "8abf4ccf2857040f942e2aeb3e07ceb8ce26eba746e59483d673c2ba4ee49844",
+      "status": "rewritten",
+      "phase": 1,
+      "rewritten_sha256": "6ce8eb48f1b3dd1d1f462a09cfd850129ad59f5e38512676ae8672036e6173a7",
+      "rewritten_at": "2026-05-25"
+    },
+    {
+      "path": "packages/ui/src/lib/parsers.ts",
+      "phase0_sha256": "8d8a61589840655aca1ed0fa938f927a7002adda6946fbbf018e80ec3d8dc76c",
+      "status": "rewritten",
+      "phase": 1,
+      "rewritten_sha256": "63f20344b5dbfab6a5b0b3655c0fc716e143727148041dcf57ea1356547b36e9",
+      "rewritten_at": "2026-05-25"
+    },
+    {
+      "path": "packages/ui/src/lib/utils.ts",
+      "phase0_sha256": "7ff92063f6489f30a95e1963948aa830decc9757e733195eab72ce7928f436d3",
+      "status": "rewritten",
+      "phase": 1,
+      "rewritten_sha256": "a49ad5289d8e16461093809dd31157e1aae56743aa6ddc3c7b91345024c095c9",
+      "rewritten_at": "2026-05-25"
+    },
+    {
+      "path": "packages/ui/src/styles/globals.css",
+      "phase0_sha256": "d875f5eb1113b5889134f88d30b595c5fd3018f7b4c99fdb2f1f7ab46b015f62",
+      "status": "rewritten",
+      "phase": 1,
+      "rewritten_sha256": "7691423539a00b3c6f85da73a2d306c549254ae472be150a4fbc452f5c67d3ca",
+      "rewritten_at": "2026-05-25"
+    },
+    {
+      "path": "packages/ui/src/types/data-table.ts",
+      "phase0_sha256": "e572f5737ca6df9ad40c825813aff1eeca3c1b90e5c308ce85daa028a6624841",
+      "status": "rewritten",
+      "phase": 1,
+      "rewritten_sha256": "99c8a2a5aada4be55407b5056cc9c9ceda9a0da5db9820cd6d5dad65f097ea0d",
+      "rewritten_at": "2026-05-25"
+    }
+  ],
+  "high_similarity_files": [
+    {
+      "path": "apps/web/src/app/s/[id]/_components/bug-report-view.tsx",
+      "crikket_path": "apps/web/src/app/s/[id]/_components/bug-report-view.tsx",
+      "phase0_jaccard_percent": 96.6,
+      "threshold_percent": 85,
+      "target_phase": 2,
+      "status": "rewritten",
+      "rewritten_at": "2026-05-25",
+      "rewrite_location": "apps/web/src/features/report-viewer/"
+    },
+    {
+      "path": "apps/web/src/app/s/[id]/_components/bug-report-canvas.tsx",
+      "crikket_path": "apps/web/src/app/s/[id]/_components/bug-report-canvas.tsx",
+      "phase0_jaccard_percent": 100,
+      "threshold_percent": 85,
+      "target_phase": 2,
+      "status": "rewritten",
+      "rewritten_at": "2026-05-25",
+      "rewrite_location": "apps/web/src/features/report-viewer/"
+    },
+    {
+      "path": "apps/web/src/app/s/[id]/_components/bug-report-sidebar.tsx",
+      "crikket_path": "apps/web/src/app/s/[id]/_components/bug-report-sidebar.tsx",
+      "phase0_jaccard_percent": 100,
+      "threshold_percent": 85,
+      "target_phase": 2,
+      "status": "rewritten",
+      "rewritten_at": "2026-05-25",
+      "rewrite_location": "apps/web/src/features/report-viewer/"
+    },
+    {
+      "path": "apps/web/src/app/s/[id]/_components/bug-report-header.tsx",
+      "crikket_path": "apps/web/src/app/s/[id]/_components/bug-report-header.tsx",
+      "phase0_jaccard_percent": 98.9,
+      "threshold_percent": 85,
+      "target_phase": 2,
+      "status": "rewritten",
+      "rewritten_at": "2026-05-25",
+      "rewrite_location": "apps/web/src/features/report-viewer/"
+    },
+    {
+      "path": "apps/web/src/app/s/[id]/_components/timeline-list.tsx",
+      "crikket_path": "apps/web/src/app/s/[id]/_components/timeline-list.tsx",
+      "phase0_jaccard_percent": 95.3,
+      "threshold_percent": 85,
+      "target_phase": 2,
+      "status": "rewritten",
+      "rewritten_at": "2026-05-25",
+      "rewrite_location": "apps/web/src/features/report-viewer/"
+    },
+    {
+      "path": "apps/web/src/app/(protected)/dashboard/_components/bug-reports/bug-report-card.tsx",
+      "crikket_path": "apps/web/src/app/(protected)/(dashboard)/_components/bug-reports/bug-report-card.tsx",
+      "phase0_jaccard_percent": 97.2,
+      "threshold_percent": 85,
+      "target_phase": 3,
+      "status": "rewritten",
+      "rewritten_at": "2026-05-23",
+      "rewrite_location": "apps/web/src/features/reports/dashboard/components/report-grid-card.tsx"
+    },
+    {
+      "path": "apps/web/src/app/(protected)/dashboard/_components/bug-reports/bug-reports-list.tsx",
+      "crikket_path": "apps/web/src/app/(protected)/(dashboard)/_components/bug-reports/bug-reports-list.tsx",
+      "phase0_jaccard_percent": 97.7,
+      "threshold_percent": 85,
+      "target_phase": 3,
+      "status": "rewritten",
+      "rewritten_at": "2026-05-23",
+      "rewrite_location": "apps/web/src/features/reports/dashboard/components/spotting-reports-list.tsx"
+    },
+    {
+      "path": "apps/web/src/app/(protected)/dashboard/_components/bug-reports/bug-reports-toolbar.tsx",
+      "crikket_path": "apps/web/src/app/(protected)/(dashboard)/_components/bug-reports/bug-reports-toolbar.tsx",
+      "phase0_jaccard_percent": 100,
+      "threshold_percent": 85,
+      "target_phase": 3,
+      "status": "rewritten",
+      "rewritten_at": "2026-05-23",
+      "rewrite_location": "apps/web/src/features/reports/dashboard/components/reports-query-bar.tsx"
+    },
+    {
+      "path": "apps/web/src/app/(protected)/dashboard/_components/bug-reports/bug-reports-bulk-actions.tsx",
+      "crikket_path": "apps/web/src/app/(protected)/(dashboard)/_components/bug-reports/bug-reports-bulk-actions.tsx",
+      "phase0_jaccard_percent": 100,
+      "threshold_percent": 85,
+      "target_phase": 3,
+      "status": "rewritten",
+      "rewritten_at": "2026-05-23",
+      "rewrite_location": "apps/web/src/features/reports/dashboard/components/reports-bulk-editor.tsx"
+    }
+  ]
+}

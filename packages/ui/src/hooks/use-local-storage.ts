@@ -1,49 +1,58 @@
-import * as React from "react"
+/**
+ * Spotting localStorage state hook.
+ * Copyright (C) 2026 KK Jayakumar
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ */
 
-type SetValue<T> = T | ((previousValue: T) => T)
+import { useCallback, useEffect, useState } from "react"
 
-function getStorageValue<T>(key: string, initialValue: T): T {
+type Updater<T> = T | ((previous: T) => T)
+
+function readStoredValue<T>(storageKey: string, fallback: T): T {
   if (typeof window === "undefined") {
-    return initialValue
+    return fallback
   }
 
-  const rawValue = window.localStorage.getItem(key)
-  if (rawValue === null) {
-    return initialValue
+  const raw = window.localStorage.getItem(storageKey)
+  if (raw === null) {
+    return fallback
   }
 
   try {
-    return JSON.parse(rawValue) as T
+    return JSON.parse(raw) as T
   } catch {
-    return initialValue
+    return fallback
   }
 }
 
-export function useLocalStorage<T>(key: string, initialValue: T) {
-  const [value, setValue] = React.useState<T>(() =>
-    getStorageValue(key, initialValue)
+export function useLocalStorage<T>(storageKey: string, initialValue: T) {
+  const [value, setValue] = useState<T>(() =>
+    readStoredValue(storageKey, initialValue)
   )
 
-  React.useEffect(() => {
-    setValue(getStorageValue(key, initialValue))
-  }, [initialValue, key])
+  useEffect(() => {
+    setValue(readStoredValue(storageKey, initialValue))
+  }, [initialValue, storageKey])
 
-  const updateValue = React.useCallback(
-    (nextValue: SetValue<T>) => {
-      setValue((previousValue) => {
-        const resolvedValue =
-          nextValue instanceof Function ? nextValue(previousValue) : nextValue
-        window.localStorage.setItem(key, JSON.stringify(resolvedValue))
-        return resolvedValue
+  const setStoredValue = useCallback(
+    (next: Updater<T>) => {
+      setValue((previous) => {
+        const resolved = next instanceof Function ? next(previous) : next
+        window.localStorage.setItem(storageKey, JSON.stringify(resolved))
+        return resolved
       })
     },
-    [key]
+    [storageKey]
   )
 
-  const removeValue = React.useCallback(() => {
-    window.localStorage.removeItem(key)
+  const removeStoredValue = useCallback(() => {
+    window.localStorage.removeItem(storageKey)
     setValue(initialValue)
-  }, [initialValue, key])
+  }, [initialValue, storageKey])
 
-  return { removeValue, setValue: updateValue, value } as const
+  return {
+    value,
+    setValue: setStoredValue,
+    removeValue: removeStoredValue,
+  } as const
 }

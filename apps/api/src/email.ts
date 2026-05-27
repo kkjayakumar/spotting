@@ -243,6 +243,130 @@ export async function sendVerificationEmail(input: {
   }
 }
 
+export async function sendPasswordResetEmail(input: {
+  to: string;
+  name: string;
+  code: string;
+}): Promise<void> {
+  const subject =
+    process.env.MAIL_PASSWORD_RESET_SUBJECT?.trim() ||
+    "Reset your Spotting password";
+  const appName = process.env.MAIL_APP_NAME?.trim() || "Spotting";
+
+  const text = [
+    `Hi ${input.name},`,
+    "",
+    `Your ${appName} password reset code is: ${input.code}`,
+    "",
+    "This code expires in 30 minutes.",
+    "",
+    "If you did not request a password reset, you can ignore this email.",
+  ].join("\n");
+
+  const html = `
+    <p>Hi ${escapeHtml(input.name)},</p>
+    <p>Your ${escapeHtml(appName)} password reset code is:</p>
+    <p style="font-size:28px;font-weight:700;letter-spacing:0.25em;margin:16px 0">${escapeHtml(input.code)}</p>
+    <p style="color:#64748b;font-size:14px">This code expires in 30 minutes.</p>
+    <p style="color:#64748b;font-size:14px">If you did not request a password reset, you can ignore this email.</p>
+  `.trim();
+
+  if (!isEmailConfigured()) {
+    logger.warn("password_reset_email_dev_fallback", {
+      to: input.to,
+      code: input.code,
+      hint: "Set SMTP credentials in apps/api/.env",
+    });
+    return;
+  }
+
+  const payload = { to: input.to, subject, text, html };
+  const transport = isSesApiConfigured() ? "ses_api" : "smtp";
+
+  try {
+    if (transport === "ses_api") {
+      await sendViaSesApi(payload);
+    } else {
+      await sendViaSmtp(payload);
+    }
+    logger.info("password_reset_email_sent", { to: input.to, transport });
+  } catch (error) {
+    const formatted = formatEmailError(error);
+    logger.error("password_reset_email_failed", {
+      to: input.to,
+      transport,
+      error: formatted,
+    });
+    throw new Error(`Failed to send password reset email: ${formatted}`);
+  }
+}
+
+export async function sendOrganizationInviteEmail(input: {
+  to: string;
+  organizationName: string;
+  inviterName: string;
+  inviteUrl: string;
+  role: string;
+}): Promise<boolean> {
+  const subject =
+    process.env.MAIL_INVITE_SUBJECT?.trim() ||
+    `You're invited to join ${input.organizationName} on Spotting`;
+  const appName = process.env.MAIL_APP_NAME?.trim() || "Spotting";
+
+  const text = [
+    `Hi,`,
+    "",
+    `${input.inviterName} invited you to join ${input.organizationName} on ${appName} as ${input.role}.`,
+    "",
+    `Accept the invitation:`,
+    input.inviteUrl,
+    "",
+    "This invitation expires in 7 days.",
+    "",
+    "If you were not expecting this invite, you can ignore this email.",
+  ].join("\n");
+
+  const html = `
+    <p>Hi,</p>
+    <p><strong>${escapeHtml(input.inviterName)}</strong> invited you to join
+    <strong>${escapeHtml(input.organizationName)}</strong> on ${escapeHtml(appName)}
+    as <strong>${escapeHtml(input.role)}</strong>.</p>
+    <p><a href="${escapeHtml(input.inviteUrl)}" style="display:inline-block;padding:12px 20px;background:#00BFFF;color:#fff;text-decoration:none;border-radius:8px;font-weight:600">Accept invitation</a></p>
+    <p style="color:#64748b;font-size:14px">Or copy this link: ${escapeHtml(input.inviteUrl)}</p>
+    <p style="color:#64748b;font-size:14px">This invitation expires in 7 days.</p>
+  `.trim();
+
+  if (!isEmailConfigured()) {
+    logger.warn("invite_email_dev_fallback", {
+      to: input.to,
+      inviteUrl: input.inviteUrl,
+      hint: "Set SMTP credentials in .env to deliver invitation emails",
+    });
+    return false;
+  }
+
+  const payload = { to: input.to, subject, text, html };
+  const transport = isSesApiConfigured() ? "ses_api" : "smtp";
+
+  try {
+    if (transport === "ses_api") {
+      await sendViaSesApi(payload);
+    } else {
+      await sendViaSmtp(payload);
+    }
+    logger.info("invite_email_sent", { to: input.to, transport });
+    return true;
+  } catch (error) {
+    const formatted = formatEmailError(error);
+    logger.error("invite_email_failed", {
+      to: input.to,
+      transport,
+      error: formatted,
+    });
+    throw new Error(`Failed to send invitation email: ${formatted}`);
+  }
+}
+
 function escapeHtml(value: string): string {
   return value
     .replace(/&/g, "&amp;")

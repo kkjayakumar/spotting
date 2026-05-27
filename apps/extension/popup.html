@@ -70,6 +70,43 @@
         width: 20px;
         height: 20px;
       }
+      .field-label {
+        display: block;
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--muted);
+        margin: 0 0 6px;
+      }
+      .field-select {
+        width: 100%;
+        padding: 10px 12px;
+        margin-bottom: 14px;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        font-size: 14px;
+        background: var(--bg);
+        color: var(--text);
+      }
+      .field-select:focus {
+        outline: 2px solid color-mix(in srgb, var(--electric) 35%, transparent);
+        border-color: var(--electric);
+      }
+      .field-input {
+        width: 100%;
+        padding: 10px 12px;
+        margin-bottom: 10px;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        font-size: 14px;
+        background: var(--bg);
+        color: var(--text);
+      }
+      .field-input:focus {
+        outline: 2px solid color-mix(in srgb, var(--electric) 35%, transparent);
+        border-color: var(--electric);
+      }
       .action-row {
         display: flex;
         align-items: center;
@@ -108,11 +145,6 @@
       }
       .action-label {
         flex: 1;
-      }
-      .divider {
-        height: 1px;
-        background: var(--border);
-        margin: 14px 0;
       }
       .hidden {
         display: none !important;
@@ -158,19 +190,6 @@
       .primary-btn:disabled {
         opacity: 0.6;
         cursor: not-allowed;
-      }
-      .text-btn {
-        width: 100%;
-        margin-top: 8px;
-        padding: 8px;
-        border: none;
-        background: none;
-        color: var(--muted);
-        font-size: 13px;
-        cursor: pointer;
-      }
-      .text-btn:hover {
-        color: var(--text);
       }
       #status {
         margin-top: 10px;
@@ -226,9 +245,12 @@
         <strong>Allowed origins</strong> empty (allows all domains).
       </p>
       <label for="dashboard">Dashboard URL</label>
-      <input id="dashboard" type="text" placeholder="http://localhost:3003" autocomplete="off" />
+      <input id="dashboard" type="text" placeholder="http://localhost:3001" autocomplete="off" />
+      <p class="hint">
+        Supported browsers: Chrome, Edge, Brave, Arc, Opera. Safari and Firefox are not supported yet.
+      </p>
       <label for="key">Public key</label>
-      <input id="key" type="text" placeholder="crk_live_…" autocomplete="off" />
+      <input id="key" type="text" placeholder="spk_live_…" autocomplete="off" />
       <button id="save" type="button" class="primary-btn">Save & continue</button>
       <p id="status-setup" class="hint"></p>
     </div>
@@ -284,40 +306,23 @@
         <span class="badge recording">REC</span>
       </button>
 
-      <div class="divider"></div>
+      <label class="field-label" for="project-select">Project</label>
+      <select id="project-select" class="field-select">
+        <option value="">No project</option>
+      </select>
 
-      <div id="submit-panel" class="hidden">
-        <p class="hint" style="margin-top: 0">Nothing is drawn on the page — record and send from here.</p>
-        <label for="report-title">Title</label>
-        <input id="report-title" type="text" placeholder="Short summary" autocomplete="off" />
-        <label for="report-desc">Details</label>
-        <textarea
-          id="report-desc"
-          rows="3"
-          placeholder="What went wrong?"
-          style="
-            width: 100%;
-            padding: 10px 12px;
-            border: 1px solid var(--border);
-            border-radius: 10px;
-            font-size: 14px;
-            font-family: inherit;
-            resize: vertical;
-          "
-        ></textarea>
-        <p id="attachments-hint" class="hint"></p>
-        <button id="action-send" type="button" class="primary-btn">Send report</button>
-        <button id="action-cancel-submit" type="button" class="text-btn">Back</button>
-      </div>
+      <label class="field-label" for="report-title">Report title</label>
+      <input
+        id="report-title"
+        class="field-input"
+        type="text"
+        placeholder="Describe the issue briefly"
+        maxlength="200"
+        autocomplete="off"
+      />
 
-      <button id="action-report" type="button" class="action-row">
-        <span class="action-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M12 8v8M8 12h8" />
-            <circle cx="12" cy="12" r="9" />
-          </svg>
-        </span>
-        <span class="action-label">Send bug report</span>
+      <button id="send-report" type="button" class="primary-btn hidden" disabled>
+        Send report
       </button>
 
       <p id="status" class="hint"></p>

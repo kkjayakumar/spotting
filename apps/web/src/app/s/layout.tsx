@@ -1,9 +1,13 @@
 import type { ReactNode } from "react"
 
-export default function SharedBugReportLayout({
-  children,
-}: {
+type SharedReportLayoutProps = {
   children: ReactNode
-}) {
-  return <div className="min-h-screen bg-background">{children}</div>
+}
+
+export default function SharedReportLayout({
+  children,
+}: SharedReportLayoutProps) {
+  return (
+    <div className="min-h-screen bg-background text-foreground">{children}</div>
+  )
 }

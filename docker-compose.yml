@@ -1,8 +1,7 @@
 services:
   spotting-postgres:
     image: postgres:16
-    container_name: spotting-postgres
-    restart: always
+    restart: unless-stopped
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-spotting}
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
@@ -17,8 +16,7 @@ services:
 
   redis:
     image: redis:7
-    container_name: spotting-redis
-    restart: always
+    restart: unless-stopped
     volumes:
       - spotting_redis_data:/data
     healthcheck:
@@ -31,35 +29,31 @@ services:
     build:
       context: .
       dockerfile: apps/api/Dockerfile
-    container_name: spotting-api
-    restart: always
+    restart: unless-stopped
+    env_file:
+      - .env
     ports:
-      - "127.0.0.1:${API_PORT:-3000}:3000"
+      - "${DOCKER_BIND_HOST:-127.0.0.1}:${API_PORT:-3000}:3000"
     environment:
-      - NODE_ENV=production
-      - API_PORT=3000
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@spotting-postgres:5432/${POSTGRES_DB:-spotting}?schema=public
-      - REDIS_URL=redis://redis:6379
-      - CORS_ORIGINS=${CORS_ORIGINS}
-      - S3_REGION=${S3_REGION:-us-east-1}
-      - S3_BUCKET=${S3_BUCKET}
-      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
-      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
-      - S3_AUTO_CREATE_BUCKET=false
-      - SMTP_REGION=${SMTP_REGION}
-      - SMTP_FROM=${SMTP_FROM}
-      - SMTP_PORT=${SMTP_PORT:-587}
-      - SMTP_USERNAME=${SMTP_USERNAME:-}
-      - SMTP_PASSWORD=${SMTP_PASSWORD:-}
-      - MAIL_APP_NAME=${MAIL_APP_NAME:-Spotting}
-      - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET}
-      - BETTER_AUTH_URL=${BETTER_AUTH_URL}
+      NODE_ENV: production
+      API_PORT: "3000"
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@spotting-postgres:5432/${POSTGRES_DB:-spotting}?schema=public
+      REDIS_URL: redis://redis:6379
+      S3_AUTO_CREATE_BUCKET: "false"
+      SPOTTING_AUTH_URL: ${SPOTTING_AUTH_URL:-http://127.0.0.1:3000}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://127.0.0.1:3001}
     healthcheck:
-      test: ["CMD", "bun", "-e", "fetch('http://127.0.0.1:3000/healthz').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3000/healthz').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
       interval: 10s
       timeout: 5s
       retries: 12
-      start_period: 60s
+      start_period: 90s
     depends_on:
       spotting-postgres:
         condition: service_healthy
@@ -70,12 +64,12 @@ services:
     build:
       context: .
       dockerfile: apps/worker/Dockerfile
-    container_name: spotting-worker
-    restart: always
+    restart: unless-stopped
+    env_file:
+      - .env
     environment:
-      - NODE_ENV=production
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@spotting-postgres:5432/${POSTGRES_DB:-spotting}?schema=public
-      - WORKER_INTERVAL_MS=${WORKER_INTERVAL_MS:-30000}
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@spotting-postgres:5432/${POSTGRES_DB:-spotting}?schema=public
     depends_on:
       spotting-postgres:
         condition: service_healthy
@@ -87,23 +81,36 @@ services:
       context: .
       dockerfile: apps/web/Dockerfile
       args:
-        - NEXT_PUBLIC_SITE_URL=${NEXT_PUBLIC_SITE_URL}
-        - NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL}
-        - NEXT_PUBLIC_SERVER_URL=${NEXT_PUBLIC_SERVER_URL}
-        - NEXT_PUBLIC_GOOGLE_AUTH_ENABLED=${NEXT_PUBLIC_GOOGLE_AUTH_ENABLED:-false}
-        - SPOTTING_API_INTERNAL_URL=http://api:3000
-    container_name: spotting-web
-    restart: always
+        SPOTTING_API_INTERNAL_URL: http://api:3000
+    restart: unless-stopped
+    env_file:
+      - .env
     ports:
-      - "127.0.0.1:${WEB_PORT:-3001}:3001"
+      - "${DOCKER_BIND_HOST:-127.0.0.1}:${WEB_PORT:-3001}:3001"
     environment:
-      - NODE_ENV=production
-      - WEB_PORT=3001
-      - SPOTTING_API_INTERNAL_URL=http://api:3000
-      - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET}
-      - BETTER_AUTH_URL=${BETTER_AUTH_URL}
+      NODE_ENV: production
+      PORT: "3001"
+      HOSTNAME: 0.0.0.0
+      SPOTTING_API_INTERNAL_URL: http://api:3000
+      SPOTTING_EXTENSION_DIST: /app/apps/extension/dist
+      NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-http://127.0.0.1:3001}
+      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://127.0.0.1:3001}
+      NEXT_PUBLIC_SERVER_URL: ${NEXT_PUBLIC_SERVER_URL:-http://127.0.0.1:3000}
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3001').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 8
+      start_period: 45s
     depends_on:
-      - api
+      api:
+        condition: service_healthy
 
 volumes:
   spotting_postgres_data:

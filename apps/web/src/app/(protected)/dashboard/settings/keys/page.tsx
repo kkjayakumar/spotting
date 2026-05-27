@@ -11,7 +11,7 @@ import { headers } from "next/headers"
 import { redirect } from "next/navigation"
 
 import { getProtectedAuthData } from "@/app/(protected)/_lib/get-protected-auth-data"
-import { client } from "@/utils/orpc"
+import { client } from "@/lib/api"
 
 import { PublicKeysManagement } from "../_components/public-keys/public-keys-management"
 import { getRequestErrorMessage } from "../_lib/get-request-error-message"

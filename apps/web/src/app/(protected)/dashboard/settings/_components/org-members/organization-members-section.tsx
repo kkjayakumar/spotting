@@ -61,7 +61,7 @@ export function OrganizationMembersSection({
 
   const inviteMemberMutation = useMutation({
     mutationFn: async (input: { email: string; role: "admin" | "member" }) => {
-      const { error } = await authClient.organization.inviteMember({
+      const { data, error } = await authClient.organization.inviteMember({
         organizationId,
         email: input.email,
         role: input.role,
@@ -70,9 +70,20 @@ export function OrganizationMembersSection({
       if (error) {
         throw error
       }
+
+      return data as { emailSent?: boolean; inviteUrl?: string } | null
     },
-    onSuccess: () => {
-      toast.success("Invitation sent")
+    onSuccess: (data) => {
+      if (data?.emailSent === false) {
+        const linkHint = data.inviteUrl
+          ? ` Share this link manually: ${data.inviteUrl}`
+          : ""
+        toast.warning(
+          `Invite created, but email could not be sent.${linkHint}`
+        )
+      } else {
+        toast.success("Invitation email sent")
+      }
       router.refresh()
     },
     onError: (error) => {
@@ -156,7 +167,9 @@ export function OrganizationMembersSection({
           <InviteMemberForm
             canInviteMembers={canInviteMembers}
             isInviting={inviteMemberMutation.isPending}
-            onInviteMember={(input) => inviteMemberMutation.mutateAsync(input)}
+            onInviteMember={async (input) => {
+              await inviteMemberMutation.mutateAsync(input)
+            }}
           />
           {canManage ? null : (
             <p className="text-muted-foreground text-sm">

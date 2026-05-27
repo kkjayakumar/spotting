@@ -50,8 +50,8 @@ Once the AI test passes locally, it gets committed to the repository. The GitHub
 To enable full E2E visual and functional testing, we configure Playwright inside `@spotting/web`:
 
 *   **Tests Directory**: `apps/web/e2e/` (keeps tests modularized under the frontend package).
-*   **Local E2E Command**: `bun run test:e2e` (spins up the API and Web servers, runs headless browser instances, and shuts down gracefully).
-*   **CI Execution**: The GitHub Actions runner executes `bunx playwright test` automatically during CI runs since the config file is present.
+*   **Local E2E Command**: `npm run test:e2e` (spins up the API and Web servers, runs headless browser instances, and shuts down gracefully).
+*   **CI Execution**: The GitHub Actions runner executes `npx playwright test` automatically during CI runs since the config file is present.
 
 ---
 

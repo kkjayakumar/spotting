@@ -1,19 +1,20 @@
-import * as React from "react"
+/**
+ * Spotting debounced value hook.
+ * Copyright (C) 2026 KK Jayakumar
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ */
 
-const DEFAULT_DEBOUNCE_MS = 500
+import { useEffect, useState } from "react"
 
-export function useDebounce<T>(value: T, delayMs = DEFAULT_DEBOUNCE_MS): T {
-  const [debouncedValue, setDebouncedValue] = React.useState<T>(value)
+const DEFAULT_DELAY_MS = 500
 
-  React.useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      setDebouncedValue(value)
-    }, delayMs)
+export function useDebounce<T>(value: T, delayMs: number = DEFAULT_DELAY_MS): T {
+  const [debounced, setDebounced] = useState(value)
 
-    return () => {
-      clearTimeout(timeoutId)
-    }
-  }, [value, delayMs])
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebounced(value), delayMs)
+    return () => window.clearTimeout(timer)
+  }, [delayMs, value])
 
-  return debouncedValue
+  return debounced
 }

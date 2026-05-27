@@ -70,8 +70,8 @@ export default function CreateOrganizationOnboardingForm() {
 
   return (
     <AuthShell
-      description="You need an organization before you can access your dashboard."
-      title="Create your organization"
+      description="Set up the shared workspace. Additional teammates join by invitation only."
+      title="Create your workspace"
     >
       <form
         className="grid gap-4"

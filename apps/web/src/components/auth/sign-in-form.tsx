@@ -15,6 +15,7 @@ import { useEffect, useMemo, useState } from "react"
 import { toast } from "sonner"
 import { AuthShell } from "@/components/auth/auth-shell"
 import { getAuthErrorMessage } from "@/lib/auth"
+import { queryClient } from "@/lib/api"
 import { loginFormSchema } from "@/lib/schema/auth"
 
 export function SignInForm() {
@@ -25,7 +26,6 @@ export function SignInForm() {
     parseAsString.withDefault(env.NEXT_PUBLIC_APP_URL)
   )
   const { data: session, isPending } = authClient.useSession()
-  console.log("SignInForm Session:", session, "isPending:", isPending)
   const [isSocialSignInPending, setIsSocialSignInPending] = useState(false)
   const isGoogleAuthEnabled = env.NEXT_PUBLIC_GOOGLE_AUTH_ENABLED
   const callbackURL = useMemo(() => {
@@ -42,6 +42,20 @@ export function SignInForm() {
       return env.NEXT_PUBLIC_APP_URL
     }
   }, [callbackUrlQuery])
+
+  const redirectPath = useMemo(() => {
+    try {
+      const appUrl = new URL(env.NEXT_PUBLIC_APP_URL)
+      const parsed = new URL(callbackURL)
+      if (parsed.origin !== appUrl.origin) {
+        return "/dashboard"
+      }
+      const path = `${parsed.pathname}${parsed.search}${parsed.hash}`
+      return path.length > 0 ? path : "/dashboard"
+    } catch {
+      return "/dashboard"
+    }
+  }, [callbackURL])
 
   const form = useForm({
     defaultValues: {
@@ -72,16 +86,17 @@ export function SignInForm() {
         return
       }
 
+      await queryClient.invalidateQueries({ queryKey: ["session"] })
       toast.success("Signed in successfully.")
-      router.push("/dashboard")
+      router.push(redirectPath as never)
     },
   })
 
   useEffect(() => {
     if (session) {
-      router.replace("/dashboard")
+      router.replace(redirectPath as never)
     }
-  }, [router, session])
+  }, [redirectPath, router, session])
 
   const handleGoogleSignIn = async () => {
     setIsSocialSignInPending(true)

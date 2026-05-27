@@ -11,12 +11,17 @@ export type {
 import type { SpottingInitOptions } from "./types";
 import { setCaptureFetchTransport } from "./capture/extension-fetch";
 import {
+  ensureCapturePipelineReady,
+  installPageCaptureBridge,
+} from "./capture";
+import {
   destroyWidget,
   mountWidget,
   openWidgetPanel,
   triggerWidgetRecordToggle,
   triggerWidgetScreenshot,
   startWidgetRecording,
+  startWidgetRecordingWithStream,
   stopWidgetRecording,
   getWidgetRecordingState,
   getPendingCaptureState,
@@ -28,11 +33,14 @@ export {
   triggerWidgetRecordToggle,
   triggerWidgetScreenshot,
   startWidgetRecording,
+  startWidgetRecordingWithStream,
   stopWidgetRecording,
   getWidgetRecordingState,
   getPendingCaptureState,
   submitWidgetReport,
   setCaptureFetchTransport,
+  ensureCapturePipelineReady,
+  installPageCaptureBridge,
 };
 export type { PendingCaptureState, WidgetRecordingState } from "./ui/widget";
 

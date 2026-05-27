@@ -1,12 +1,17 @@
 "use client"
 
-import { useEffect, useRef } from "react"
-import type React from "react"
-import { useInView } from "motion/react"
-import { annotate } from "rough-notation"
-import { type RoughAnnotation } from "rough-notation/lib/model"
+/**
+ * Spotting rough-notation highlighter wrapper.
+ * Copyright (C) 2026 KK Jayakumar
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ */
 
-type AnnotationAction =
+import { useInView } from "motion/react"
+import { useEffect, useRef, type ReactNode } from "react"
+import { annotate } from "rough-notation"
+import type { RoughAnnotation } from "rough-notation/lib/model"
+
+type HighlightAction =
   | "highlight"
   | "underline"
   | "box"
@@ -16,8 +21,8 @@ type AnnotationAction =
   | "bracket"
 
 interface HighlighterProps {
-  children: React.ReactNode
-  action?: AnnotationAction
+  children: ReactNode
+  action?: HighlightAction
   color?: string
   strokeWidth?: number
   animationDuration?: number
@@ -38,24 +43,22 @@ export function Highlighter({
   multiline = true,
   isView = false,
 }: HighlighterProps) {
-  const elementRef = useRef<HTMLSpanElement>(null)
+  const hostRef = useRef<HTMLSpanElement>(null)
   const annotationRef = useRef<RoughAnnotation | null>(null)
-
-  const isInView = useInView(elementRef, {
-    once: true,
-    margin: "-10%",
-  })
-
-  // If isView is false, always show. If isView is true, wait for inView
-  const shouldShow = !isView || isInView
+  const isVisible = useInView(hostRef, { once: true, margin: "-10%" })
+  const shouldRender = !isView || isVisible
 
   useEffect(() => {
-    if (!shouldShow) return
+    if (!shouldRender) {
+      return
+    }
 
-    const element = elementRef.current
-    if (!element) return
+    const element = hostRef.current
+    if (!element) {
+      return
+    }
 
-    const annotationConfig = {
+    const annotation = annotate(element, {
       type: action,
       color,
       strokeWidth,
@@ -63,12 +66,10 @@ export function Highlighter({
       iterations,
       padding,
       multiline,
-    }
-
-    const annotation = annotate(element, annotationConfig)
+    })
 
     annotationRef.current = annotation
-    annotationRef.current.show()
+    annotation.show()
 
     const resizeObserver = new ResizeObserver(() => {
       annotation.hide()
@@ -79,24 +80,22 @@ export function Highlighter({
     resizeObserver.observe(document.body)
 
     return () => {
-      if (element) {
-        annotate(element, { type: action }).remove()
-        resizeObserver.disconnect()
-      }
+      annotate(element, { type: action }).remove()
+      resizeObserver.disconnect()
     }
   }, [
-    shouldShow,
     action,
-    color,
-    strokeWidth,
     animationDuration,
+    color,
     iterations,
-    padding,
     multiline,
+    padding,
+    shouldRender,
+    strokeWidth,
   ])
 
   return (
-    <span ref={elementRef} className="relative inline-block bg-transparent">
+    <span ref={hostRef} className="relative inline-block bg-transparent">
       {children}
     </span>
   )

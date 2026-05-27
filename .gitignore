@@ -7,3 +7,14 @@ apps/api/src/generated
 .env.local
 coverage
 *.log
+apps/web/e2e/.db-ready
+*.tsbuildinfo
+
+# Test artifacts (never commit)
+playwright-report/
+test-results/
+apps/web/playwright-report/
+apps/web/test-results/
+
+# Generated compliance output (may contain local machine paths)
+docs/provenance/mirror-scan-status.md

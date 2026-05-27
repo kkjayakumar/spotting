@@ -1,6 +1,5 @@
 import {
   Building2,
-  CreditCard,
   KeyRound,
   Puzzle,
   UserRound,
@@ -30,11 +29,5 @@ export const dashboardSettingsNavItems = [
     title: "Browser extension",
     description: "Chromium capture extension",
     icon: Puzzle,
-  },
-  {
-    href: "/dashboard/settings/billing" as const,
-    title: "Billing",
-    description: "Plan, pricing, payments",
-    icon: CreditCard,
   },
 ] as const

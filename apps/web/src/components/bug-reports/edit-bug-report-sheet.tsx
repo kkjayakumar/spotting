@@ -29,10 +29,12 @@ import {
   SheetTitle,
 } from "@spotting/ui/components/ui/sheet"
 import { useForm } from "@tanstack/react-form"
+import { useQuery } from "@tanstack/react-query"
 import { useState } from "react"
 import { toast } from "sonner"
 
 import { editBugReportFormSchema } from "@/lib/schema/bug-report"
+import { reportGroupQueries } from "@/lib/api/report-groups"
 import { updateBugReport } from "@/lib/bug-report-api"
 
 const statusOptions: Array<{ label: string; value: BugReportStatus }> = [
@@ -87,6 +89,7 @@ interface EditBugReportSheetProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onUpdated?: () => Promise<void> | void
+  organizationId?: string | null
   report: {
     id: string
     title: string | null | undefined
@@ -94,6 +97,7 @@ interface EditBugReportSheetProps {
     status: BugReportStatus
     priority: Priority
     visibility: BugReportVisibility
+    groupId?: string | null
   }
 }
 
@@ -101,9 +105,15 @@ export function EditBugReportSheet({
   open,
   onOpenChange,
   onUpdated,
+  organizationId,
   report,
 }: EditBugReportSheetProps) {
   const [isSaving, setIsSaving] = useState(false)
+  const [groupId, setGroupId] = useState(report.groupId ?? "")
+  const groupsQuery = useQuery({
+    ...reportGroupQueries.list(organizationId ?? null),
+    enabled: open && Boolean(organizationId),
+  })
 
   const form = useForm({
     defaultValues: {
@@ -127,6 +137,7 @@ export function EditBugReportSheet({
           status: value.status,
           priority: value.priority,
           visibility: value.visibility,
+          groupId: groupId.length > 0 ? groupId : null,
         })
         await onUpdated?.()
         toast.success("Bug report updated")
@@ -149,6 +160,7 @@ export function EditBugReportSheet({
       priority: report.priority,
       visibility: report.visibility,
     })
+    setGroupId(report.groupId ?? "")
   }
 
   const handleOpenChange = (nextOpen: boolean) => {
@@ -233,6 +245,33 @@ export function EditBugReportSheet({
                 )
               }}
             </form.Field>
+
+            <Field>
+              <FieldLabel htmlFor="report-group">Project</FieldLabel>
+              <Select
+                onValueChange={(value) =>
+                  setGroupId(!value || value === "__none__" ? "" : value)
+                }
+                value={groupId.length > 0 ? groupId : "__none__"}
+              >
+                <SelectTrigger className="w-full" id="report-group">
+                  <SelectValue>
+                    {groupId
+                      ? (groupsQuery.data?.find((group) => group.id === groupId)
+                          ?.name ?? "Project")
+                      : "No project"}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">No project</SelectItem>
+                  {(groupsQuery.data ?? []).map((group) => (
+                    <SelectItem key={group.id} value={group.id}>
+                      {group.name} ({group.reportCount})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
 
             <div className="grid gap-4 sm:grid-cols-2">
               <form.Field name="status">

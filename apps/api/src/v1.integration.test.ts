@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, mock } from "bun:test";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Hono } from "hono";
 import {
   InviteRole,
@@ -11,76 +11,137 @@ import { FIXTURE_IDS, FIXTURE_TIME } from "./test/fixtures";
 
 const prismaMock = {
   user: {
-    findUnique: mock(async () => null),
-    update: mock(async () => ({ id: FIXTURE_IDS.userOwner })),
-    create: mock(async ({ data }: { data: { email: string; name: string } }) => ({
+    findUnique: vi.fn(async ({ where }: { where: { id?: string; email?: string } }) => {
+      if (where.email) return null;
+      if (where.id === FIXTURE_IDS.userOwner || where.id === "user_1") {
+        return {
+          id: FIXTURE_IDS.userOwner,
+          email: "owner@spotting.dev",
+          name: "Owner",
+        };
+      }
+      return null;
+    }),
+    update: vi.fn(async () => ({ id: FIXTURE_IDS.userOwner })),
+    create: vi.fn(async ({ data }: { data: { email: string; name: string } }) => ({
       id: FIXTURE_IDS.userOwner,
       email: data.email,
       name: data.name,
     })),
   },
   session: {
-    create: mock(async () => ({ id: "session_1" })),
+    create: vi.fn(async () => ({ id: "session_1" })),
   },
   emailVerificationToken: {
-    deleteMany: mock(async () => ({ count: 0 })),
-    create: mock(async () => ({ id: "ev_1" })),
+    deleteMany: vi.fn(async () => ({ count: 0 })),
+    create: vi.fn(async () => ({ id: "ev_1" })),
   },
   organization: {
-    findUnique: mock(async () => null),
-    create: mock(async ({ data }: { data: { name: string; slug: string } }) => ({
+    count: vi.fn(async () => 0),
+    findUnique: vi.fn(async ({ where }: { where: { id?: string; slug?: string } }) => {
+      if (where.id === FIXTURE_IDS.orgPrimary) {
+        return {
+          id: FIXTURE_IDS.orgPrimary,
+          name: "Acme",
+          slug: "acme",
+        };
+      }
+      return null;
+    }),
+    create: vi.fn(async ({ data }: { data: { name: string; slug: string } }) => ({
       id: FIXTURE_IDS.orgPrimary,
       name: data.name,
       slug: data.slug,
     })),
   },
   invitation: {
-    create: mock(async ({ data }: { data: { email: string } }) => ({
+    findFirst: vi.fn(async () => null),
+    create: vi.fn(async ({ data }: { data: { email: string } }) => ({
       id: FIXTURE_IDS.invitePrimary,
       email: data.email,
       status: InvitationStatus.pending,
     })),
-    findMany: mock(async () => [{ id: FIXTURE_IDS.invitePrimary, email: "new@spotting.dev" }]),
+    findMany: vi.fn(async () => [
+      { id: FIXTURE_IDS.invitePrimary, email: "new@spotting.dev" },
+    ]),
   },
   report: {
-    findUnique: mock(async ({ where }: { where: { id: string } }) =>
+    findUnique: vi.fn(async ({ where }: { where: { id: string } }) =>
       where.id === FIXTURE_IDS.reportPrimary
         ? { id: FIXTURE_IDS.reportPrimary, organizationId: FIXTURE_IDS.orgPrimary }
         : null,
     ),
-    create: mock(async ({ data }: { data: { title: string; organizationId: string } }) => ({
+    create: vi.fn(async ({ data }: { data: { title: string; organizationId: string } }) => ({
       id: FIXTURE_IDS.reportPrimary,
       title: data.title,
       organizationId: data.organizationId,
     })),
   },
   uploadSession: {
-    create: mock(async () => ({
+    create: vi.fn(async () => ({
       id: FIXTURE_IDS.uploadPrimary,
       uploadKey: `${FIXTURE_IDS.orgPrimary}/${FIXTURE_IDS.reportPrimary}/test.png`,
       expiresAt: FIXTURE_TIME.nextWeek,
     })),
   },
   membership: {
-    findFirst: mock(async () => ({ organizationId: FIXTURE_IDS.orgPrimary })),
+    findFirst: vi.fn(async () => null),
+    findUnique: vi.fn(async () => ({
+      id: "member_1",
+      organizationId: FIXTURE_IDS.orgPrimary,
+      userId: FIXTURE_IDS.userOwner,
+      role: MembershipRole.owner,
+      preferredReportGroupId: null,
+    })),
+  },
+  organizationSubscription: {
+    findUnique: vi.fn(async () => null),
+    create: vi.fn(async ({ data }: { data: { organizationId: string } }) => ({
+      id: "sub_1",
+      organizationId: data.organizationId,
+      plan: "pro",
+      billingInterval: "monthly",
+      status: "active",
+      cancelAtPeriodEnd: false,
+      currentPeriodStart: null,
+      currentPeriodEnd: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    })),
   },
 };
 
-mock.module("./db", () => ({ prisma: prismaMock }));
-mock.module("./auth", () => ({
-  requireSession: mock(async () => ({ userId: "user_1", token: "token_1" })),
-  tryReadSession: mock(async () => ({ userId: "user_1", token: "token_1" })),
+vi.mock("./db", () => ({ prisma: prismaMock }));
+vi.mock("./auth", () => ({
+  requireSession: vi.fn(async () => ({ userId: "user_1", token: "token_1" })),
+  tryReadSession: vi.fn(async () => ({ userId: "user_1", token: "token_1" })),
 }));
-mock.module("./permissions", () => ({
-  requireOrgMembership: mock(async () => ({ organizationId: FIXTURE_IDS.orgPrimary, userId: FIXTURE_IDS.userOwner })),
-  requireOrgRole: mock(async () => ({
+vi.mock("./permissions", () => ({
+  requireOrgMembership: vi.fn(async () => ({
+    organizationId: FIXTURE_IDS.orgPrimary,
+    userId: FIXTURE_IDS.userOwner,
+  })),
+  requireOrgRole: vi.fn(async () => ({
     organizationId: FIXTURE_IDS.orgPrimary,
     userId: FIXTURE_IDS.userOwner,
     role: MembershipRole.owner,
   })),
 }));
-mock.module("./s3", () => ({
-  createPresignedUploadUrl: mock(async () => ({ uploadUrl: "https://example.test/upload" })),
+vi.mock("./s3", () => ({
+  createPresignedUploadUrl: vi.fn(async () => ({
+    uploadUrl: "https://example.test/upload",
+  })),
+  deleteS3Objects: vi.fn(async () => 0),
+  deleteS3Prefix: vi.fn(async () => 0),
+}));
+vi.mock("./email-verification", () => ({
+  issueAndSendEmailVerificationOtp: vi.fn(async () => ({ otp: "123456" })),
+  mapVerificationError: vi.fn(),
+  verifyEmailOtp: vi.fn(),
+}));
+vi.mock("./email", () => ({
+  isEmailConfigured: vi.fn(() => false),
+  sendOrganizationInviteEmail: vi.fn(async () => true),
 }));
 
 const { v1 } = await import("./v1");
@@ -88,11 +149,13 @@ const { v1 } = await import("./v1");
 const app = new Hono();
 app.route("/v1", v1);
 
+function clearMocks(section: Record<string, ReturnType<typeof vi.fn>>) {
+  Object.values(section).forEach((fn) => fn.mockClear());
+}
+
 describe("v1 integration routes", () => {
   beforeEach(() => {
-    Object.values(prismaMock).forEach((section) =>
-      Object.values(section).forEach((fn) => (fn as ReturnType<typeof mock>).mockClear()),
-    );
+    Object.values(prismaMock).forEach((section) => clearMocks(section));
   });
 
   it("handles signup endpoint", async () => {
@@ -107,7 +170,10 @@ describe("v1 integration routes", () => {
     });
 
     expect(response.status).toBe(201);
-    const payload = (await response.json()) as { user: { email: string }; sessionToken: string };
+    const payload = (await response.json()) as {
+      user: { email: string };
+      sessionToken: string;
+    };
     expect(payload.user.email).toBe("owner@spotting.dev");
     expect(typeof payload.sessionToken).toBe("string");
   });
@@ -120,11 +186,14 @@ describe("v1 integration routes", () => {
     });
     expect(orgResponse.status).toBe(201);
 
-    const inviteResponse = await app.request(`http://localhost/v1/orgs/${FIXTURE_IDS.orgPrimary}/invites`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ email: "new@spotting.dev", role: "member" }),
-    });
+    const inviteResponse = await app.request(
+      `http://localhost/v1/orgs/${FIXTURE_IDS.orgPrimary}/invites`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ email: "new@spotting.dev", role: "member" }),
+      },
+    );
     expect(inviteResponse.status).toBe(201);
 
     const listInvitesResponse = await app.request(
@@ -137,7 +206,10 @@ describe("v1 integration routes", () => {
 
     const reportResponse = await app.request("http://localhost/v1/reports", {
       method: "POST",
-      headers: { "content-type": "application/json", "x-org-id": FIXTURE_IDS.orgPrimary },
+      headers: {
+        "content-type": "application/json",
+        "x-org-id": FIXTURE_IDS.orgPrimary,
+      },
       body: JSON.stringify({
         title: "Checkout fails",
         priority: ReportPriority.medium,

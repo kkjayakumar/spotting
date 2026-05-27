@@ -12,6 +12,12 @@ import {
 } from "../storage";
 import { testApiHealth } from "../api-proxy";
 import {
+  fetchExtensionProjects,
+  loadSelectedProjectId,
+  saveSelectedProjectId,
+  type ExtensionProject,
+} from "../projects";
+import {
   getActiveTab,
   restrictedPageMessage,
   sendToActiveTab,
@@ -37,31 +43,26 @@ const actionStopRecord = document.getElementById(
   "action-stop-record",
 ) as HTMLButtonElement;
 const recordBadge = document.getElementById("record-badge")!;
-const actionReport = document.getElementById(
-  "action-report",
+const projectSelectEl = document.getElementById(
+  "project-select",
+) as HTMLSelectElement;
+const reportTitleEl = document.getElementById(
+  "report-title",
+) as HTMLInputElement;
+const sendReportBtn = document.getElementById(
+  "send-report",
 ) as HTMLButtonElement;
-const submitPanel = document.getElementById("submit-panel")!;
-const reportTitleEl = document.getElementById("report-title") as HTMLInputElement;
-const reportDescEl = document.getElementById("report-desc") as HTMLTextAreaElement;
-const attachmentsHintEl = document.getElementById("attachments-hint")!;
-const actionSend = document.getElementById("action-send") as HTMLButtonElement;
-const actionCancelSubmit = document.getElementById(
-  "action-cancel-submit",
-) as HTMLButtonElement;
-
-const homeActions = [
-  actionScreenshot,
-  actionRecord,
-  actionStopRecord,
-  actionReport,
-  document.querySelector("#view-home .divider") as HTMLElement,
-].filter(Boolean);
 
 let settings = {
   apiBaseUrl: "http://localhost:3000",
   publicKey: "",
-  dashboardUrl: "http://localhost:3003",
+  dashboardUrl: "http://localhost:3001",
 };
+
+let projects: ExtensionProject[] = [];
+let isSendingReport = false;
+let hasPendingCapture = false;
+let lastPolledCaptureKey = "";
 
 function showView(which: "setup" | "home") {
   viewSetup.classList.toggle("hidden", which !== "setup");
@@ -87,36 +88,55 @@ function mountPayload(): MountMessage {
   };
 }
 
-function formatBytes(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+function setCaptureActionsDisabled(disabled: boolean) {
+  actionScreenshot.disabled = disabled;
+  actionRecord.disabled = disabled;
+  actionStopRecord.disabled = disabled;
 }
 
-function setSubmitPanelVisible(visible: boolean) {
-  submitPanel.classList.toggle("hidden", !visible);
-  for (const el of homeActions) {
-    el.classList.toggle("hidden", visible);
-  }
+function updateSendUi() {
+  const title = reportTitleEl.value.trim();
+  const canSend = hasPendingCapture && title.length > 0 && !isSendingReport;
+  sendReportBtn.classList.toggle("hidden", !hasPendingCapture);
+  sendReportBtn.disabled = !canSend;
+  reportTitleEl.disabled = isSendingReport;
 }
 
-function syncAttachmentsHint(state: {
-  hasPendingRecording?: boolean;
-  hasPendingScreenshot?: boolean;
-  recordingSize?: number;
-  screenshotSize?: number;
-}) {
-  const parts: string[] = [];
-  if (state.hasPendingRecording) {
-    parts.push(`Recording (${formatBytes(state.recordingSize ?? 0)})`);
+function renderProjectOptions(selectedProjectId: string | null) {
+  projectSelectEl.innerHTML = "";
+  const noneOption = document.createElement("option");
+  noneOption.value = "";
+  noneOption.textContent = "No project";
+  projectSelectEl.appendChild(noneOption);
+
+  for (const project of projects) {
+    const option = document.createElement("option");
+    option.value = project.id;
+    option.textContent = project.name;
+    projectSelectEl.appendChild(option);
   }
-  if (state.hasPendingScreenshot) {
-    parts.push(`Screenshot (${formatBytes(state.screenshotSize ?? 0)})`);
+
+  projectSelectEl.value = selectedProjectId ?? "";
+}
+
+async function loadProjects() {
+  try {
+    projects = await fetchExtensionProjects({
+      apiBaseUrl: settings.apiBaseUrl,
+      publicKey: settings.publicKey,
+    });
+    const selectedProjectId = await loadSelectedProjectId();
+    renderProjectOptions(selectedProjectId);
+  } catch (error) {
+    projects = [];
+    renderProjectOptions(await loadSelectedProjectId());
+    setStatus(
+      error instanceof Error
+        ? error.message
+        : "Could not load projects — reports will save without a project.",
+      true,
+    );
   }
-  attachmentsHintEl.textContent =
-    parts.length > 0
-      ? `Attached: ${parts.join(" · ")}`
-      : "Attach a recording or screenshot first.";
 }
 
 async function persistFromForm(): Promise<boolean> {
@@ -133,7 +153,7 @@ async function persistFromForm(): Promise<boolean> {
 
   const { url: apiBaseUrl, corrected } = normalizeApiBaseUrl(apiEl.value);
   const dashboardUrl =
-    dashboardEl.value.trim() || "http://localhost:3003";
+    dashboardEl.value.trim() || "http://localhost:3001";
   const publicKey = keyEl.value.trim();
 
   apiEl.value = apiBaseUrl;
@@ -169,16 +189,158 @@ async function checkApiConnection(): Promise<boolean> {
   return true;
 }
 
+async function suggestedReportTitle(): Promise<string> {
+  const tab = await getActiveTab();
+  let host = "page";
+  if (tab?.url) {
+    try {
+      host = new URL(tab.url).hostname;
+    } catch {
+      /* ignore */
+    }
+  }
+  const when = new Date().toLocaleString(undefined, {
+    dateStyle: "short",
+    timeStyle: "short",
+  });
+  return `Bug report — ${host} — ${when}`;
+}
+
+async function maybePrefillReportTitle() {
+  if (reportTitleEl.value.trim().length > 0) {
+    return;
+  }
+  reportTitleEl.value = await suggestedReportTitle();
+}
+
+function pendingCaptureLabel(
+  hasRecording: boolean,
+  hasScreenshot: boolean,
+): string {
+  if (hasRecording && hasScreenshot) {
+    return "Recording and screenshot ready — edit the title and send.";
+  }
+  if (hasRecording) {
+    return "Recording ready — edit the title and send.";
+  }
+  if (hasScreenshot) {
+    return "Screenshot ready — edit the title and send.";
+  }
+  return "Add a title, then send your report.";
+}
+
+async function submitCapture(): Promise<boolean> {
+  const title = reportTitleEl.value.trim();
+  if (!title) {
+    setStatus("Enter a report title before sending.", true);
+    reportTitleEl.focus();
+    return false;
+  }
+
+  if (isSendingReport) {
+    return false;
+  }
+
+  isSendingReport = true;
+  setCaptureActionsDisabled(true);
+  updateSendUi();
+  setStatus("Sending report…");
+
+  try {
+    if (!(await checkApiConnection())) {
+      return false;
+    }
+
+    const state = await sendToActiveTab({ type: "SPOTTING_CAPTURE_STATE" });
+    if (
+      !state.ok ||
+      !(state.hasPendingRecording || state.hasPendingScreenshot)
+    ) {
+      setStatus("Nothing to send — capture a screenshot or recording first.", true);
+      hasPendingCapture = false;
+      updateSendUi();
+      return false;
+    }
+
+    const res = await sendToActiveTab({
+      ...mountPayload(),
+      type: "SPOTTING_SUBMIT_REPORT",
+      title,
+    });
+
+    if (res.ok && res.reportUrl) {
+      setStatus("Report sent!");
+      reportTitleEl.value = "";
+      hasPendingCapture = false;
+      lastPolledCaptureKey = "";
+      void chrome.tabs.create({ url: res.reportUrl });
+      await refreshCaptureState();
+      return true;
+    }
+
+    setStatus(res.error ?? "Send failed.", true);
+    return false;
+  } finally {
+    isSendingReport = false;
+    setCaptureActionsDisabled(false);
+    updateSendUi();
+  }
+}
+
 async function refreshCaptureState() {
   const res = await sendToActiveTab({ type: "SPOTTING_CAPTURE_STATE" });
   if (!res.ok) return;
   setRecordingUi(Boolean(res.isRecording));
-  syncAttachmentsHint(res);
   if (res.isRecording) {
-    setStatus("Recording — use Stop recording, then Send bug report.");
-  } else if (res.hasPendingRecording || res.hasPendingScreenshot) {
-    setStatus("Ready to send — open Send bug report.");
+    hasPendingCapture = false;
+    updateSendUi();
+    setStatus(
+      "Recording — click Stop recording in the extension when finished (not the browser Stop sharing button).",
+    );
+    return;
   }
+
+  const captureKey = `${res.recordingSize ?? 0}:${res.screenshotSize ?? 0}`;
+  const pending = Boolean(res.hasPendingRecording || res.hasPendingScreenshot);
+  hasPendingCapture = pending;
+
+  if (!pending) {
+    lastPolledCaptureKey = "";
+    updateSendUi();
+    return;
+  }
+
+  if (captureKey !== lastPolledCaptureKey) {
+    lastPolledCaptureKey = captureKey;
+    await maybePrefillReportTitle();
+    setStatus(
+      pendingCaptureLabel(
+        Boolean(res.hasPendingRecording),
+        Boolean(res.hasPendingScreenshot),
+      ),
+    );
+  }
+
+  updateSendUi();
+}
+
+let captureStatePoll: number | undefined;
+
+function startCaptureStatePoll() {
+  if (captureStatePoll !== undefined) {
+    return;
+  }
+  captureStatePoll = window.setInterval(() => {
+    void refreshCaptureState();
+  }, 1500);
+}
+
+function stopCaptureStatePoll() {
+  if (captureStatePoll === undefined) {
+    return;
+  }
+  window.clearInterval(captureStatePoll);
+  captureStatePoll = undefined;
 }
 
 async function load() {
@@ -196,7 +358,9 @@ async function load() {
         setStatus(restricted, true);
       } else {
         await checkApiConnection();
+        await loadProjects();
         await refreshCaptureState();
+        startCaptureStatePoll();
       }
     }
   } catch {
@@ -209,7 +373,11 @@ saveBtn.addEventListener("click", async () => {
   const saved = await persistFromForm();
   if (saved) {
     showView("home");
-    setStatus("Ready — record or capture, then send from the extension.");
+    setStatus(
+      "Ready — pick a project, capture, then add a title and send your report.",
+    );
+    await loadProjects();
+    startCaptureStatePoll();
   }
 });
 
@@ -219,21 +387,43 @@ homeBtn.addEventListener("click", () => {
 });
 
 settingsBtn.addEventListener("click", () => {
+  stopCaptureStatePoll();
   showView("setup");
-  setSubmitPanelVisible(false);
   setSetupStatus("Update your API key or dashboard URL.");
 });
 
+projectSelectEl.addEventListener("change", () => {
+  const projectId = projectSelectEl.value || null;
+  void saveSelectedProjectId(projectId);
+  const projectName = projects.find((project) => project.id === projectId)?.name;
+  if (projectName) {
+    setStatus(`New captures will save to ${projectName}.`);
+  } else {
+    setStatus("New captures will save without a project.");
+  }
+});
+
+reportTitleEl.addEventListener("input", () => {
+  updateSendUi();
+});
+
+sendReportBtn.addEventListener("click", () => {
+  void submitCapture();
+});
+
 actionScreenshot.addEventListener("click", async () => {
-  setStatus("Capturing…");
+  setStatus("Capturing screenshot…");
   actionScreenshot.disabled = true;
   const res = await sendToActiveTab({
     ...mountPayload(),
     type: "SPOTTING_SCREENSHOT",
   });
-  if (res.ok) {
-    syncAttachmentsHint(res);
-    setStatus("Screenshot attached — open Send bug report.");
+  if (res.ok && res.hasPendingScreenshot) {
+    await refreshCaptureState();
+    reportTitleEl.focus();
+    reportTitleEl.select();
+  } else if (res.ok) {
+    setStatus("Screenshot cancelled.");
   } else {
     setStatus(res.error ?? "Failed.", true);
   }
@@ -241,7 +431,7 @@ actionScreenshot.addEventListener("click", async () => {
 });
 
 actionRecord.addEventListener("click", async () => {
-  setStatus("Starting recording… pick a tab or window to share.");
+  setStatus("Recording this tab…");
   actionRecord.disabled = true;
   const res = await sendToActiveTab({
     ...mountPayload(),
@@ -249,12 +439,13 @@ actionRecord.addEventListener("click", async () => {
   });
   if (res.ok) {
     setRecordingUi(Boolean(res.isRecording));
-    syncAttachmentsHint(res);
-    setStatus(
-      res.isRecording
-        ? "Recording — click Stop recording when finished."
-        : "Recording started.",
-    );
+    if (res.isRecording) {
+      setStatus(
+        "Recording this tab — look for the red Spotting badge. Stop from the extension when done.",
+      );
+    } else {
+      setStatus("Could not start recording on this tab.", true);
+    }
   } else {
     setStatus(res.error ?? "Failed.", true);
   }
@@ -269,69 +460,21 @@ actionStopRecord.addEventListener("click", async () => {
     type: "SPOTTING_STOP_RECORD",
   });
   if (res.ok) {
-    setRecordingUi(false);
-    syncAttachmentsHint(res);
-    setStatus(
-      res.hasPendingRecording
-        ? "Recording saved — open Send bug report."
-        : "Recording stopped.",
-    );
+    setRecordingUi(Boolean(res.isRecording));
+    if (res.hasPendingRecording) {
+      await refreshCaptureState();
+      reportTitleEl.focus();
+      reportTitleEl.select();
+    } else {
+      setStatus(
+        "No recording was saved. Record for a few seconds, then use Stop recording in the extension.",
+        true,
+      );
+    }
   } else {
     setStatus(res.error ?? "Failed.", true);
   }
   actionStopRecord.disabled = false;
-});
-
-actionReport.addEventListener("click", async () => {
-  const res = await sendToActiveTab({ type: "SPOTTING_CAPTURE_STATE" });
-  if (!res.ok) {
-    setStatus(res.error ?? "Failed.", true);
-    return;
-  }
-  syncAttachmentsHint(res);
-  if (!(res.hasPendingRecording || res.hasPendingScreenshot)) {
-    setStatus("Record or screenshot first, then send.", true);
-    return;
-  }
-  setSubmitPanelVisible(true);
-  setStatus("Add a title and send — the page stays clear.");
-});
-
-actionCancelSubmit.addEventListener("click", () => {
-  setSubmitPanelVisible(false);
-  void refreshCaptureState();
-});
-
-actionSend.addEventListener("click", async () => {
-  const title = reportTitleEl.value.trim();
-  if (!title) {
-    setStatus("Title is required.", true);
-    return;
-  }
-  actionSend.disabled = true;
-  setStatus("Checking API connection…");
-  if (!(await checkApiConnection())) {
-    actionSend.disabled = false;
-    return;
-  }
-  setStatus("Sending report…");
-  const res = await sendToActiveTab({
-    ...mountPayload(),
-    type: "SPOTTING_SUBMIT_REPORT",
-    title,
-    description: reportDescEl.value.trim() || undefined,
-  });
-  if (res.ok && res.reportUrl) {
-    setStatus("Report sent!");
-    reportTitleEl.value = "";
-    reportDescEl.value = "";
-    setSubmitPanelVisible(false);
-    void chrome.tabs.create({ url: res.reportUrl });
-    await refreshCaptureState();
-  } else {
-    setStatus(res.error ?? "Send failed.", true);
-  }
-  actionSend.disabled = false;
 });
 
 void load();

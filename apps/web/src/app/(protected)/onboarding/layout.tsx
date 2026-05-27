@@ -2,14 +2,17 @@ import { redirect } from "next/navigation"
 
 import { getProtectedAuthData } from "@/app/(protected)/_lib/get-protected-auth-data"
 
+interface OnboardingLayoutProps {
+  children: React.ReactNode
+}
+
 export default async function OnboardingLayout({
   children,
-}: {
-  children: React.ReactNode
-}) {
-  const { organizations } = await getProtectedAuthData()
+}: OnboardingLayoutProps) {
+  const auth = await getProtectedAuthData()
+  const hasOrganization = auth.organizations.length > 0
 
-  if (organizations.length > 0) {
+  if (hasOrganization) {
     redirect("/")
   }
 

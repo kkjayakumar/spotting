@@ -1,27 +1,27 @@
 import type { Metadata } from "next"
 
-import { BugReportsList } from "./_components/bug-reports/bug-reports-list"
+import { SpottingReportsList } from "@/features/reports/dashboard"
 
-const META = {
-  title: "Bug Reports",
-  description: "View and manage your bug reports",
-}
+const PAGE_COPY = {
+  title: "Reports",
+  description: "Browse, filter, and manage captured bug reports for your team.",
+} as const
 
 export const metadata: Metadata = {
-  title: META.title,
-  description: META.description,
+  title: PAGE_COPY.title,
+  description: PAGE_COPY.description,
 }
 
 export default function DashboardPage() {
   return (
     <div className="flex flex-1 flex-col gap-4 pt-4">
-      <div className="flex items-center justify-between">
+      <header className="flex items-center justify-between">
         <div>
-          <h1 className="font-bold text-3xl tracking-tight">{META.title}</h1>
-          <p className="mt-1 text-muted-foreground">{META.description}</p>
+          <h1 className="font-bold text-3xl tracking-tight">{PAGE_COPY.title}</h1>
+          <p className="mt-1 text-muted-foreground">{PAGE_COPY.description}</p>
         </div>
-      </div>
-      <BugReportsList />
+      </header>
+      <SpottingReportsList />
     </div>
   )
 }

@@ -1,31 +1,37 @@
 import {
-  captureScreenshotPng,
-  installCapturePipeline,
+  captureScreenshotFromStreamPromise,
+  ensureCapturePipelineReady,
   installUserActionCapture,
   markCaptureSessionEnd,
   markCaptureSessionStart,
+  requestDisplayMediaStream,
   setConsoleBufferLimits,
   setNetworkBufferLimits,
   setUserActionBufferLimits,
-  startScreenRecording,
+  startScreenRecordingFromStreamPromise,
   type RecorderState,
 } from "../capture";
+import { promptCaptureUserGesture } from "./capture-gesture-prompt";
+import {
+  removeHeadlessRecordingIndicator,
+  showHeadlessRecordingIndicator,
+} from "./headless-recording-indicator";
 
 // setStatus is assigned when the visible widget mounts; headless mode leaves it null.
-function headlessStatus(msg: string) {
-  setWidgetStatus?.(msg);
+function headlessStatus(msg: string, err?: boolean) {
+  setWidgetStatus?.(msg, err);
 }
 import { SpottingClient } from "../client";
 import type { SpottingInitOptions } from "../types";
 
 const HOST_ID = "spotting-capture-root";
-const LEGACY_HOST_IDS = ["crikket-capture-root", "crikket-capture-widget"];
+const LEGACY_WIDGET_HOST_IDS = ["spotting-capture-widget"];
 
 const ELECTRIC_BLUE = "#00BFFF";
 
 function removeLegacyHosts() {
   if (typeof document === "undefined") return;
-  for (const id of LEGACY_HOST_IDS) {
+  for (const id of LEGACY_WIDGET_HOST_IDS) {
     document.getElementById(id)?.remove();
   }
 }
@@ -45,17 +51,36 @@ let runRecordStop: (() => Promise<void>) | null = null;
 let syncRecordButtons: ((isRecording: boolean) => void) | null = null;
 let syncAttachmentsUi: (() => void) | null = null;
 let setWidgetStatus: ((msg: string, err?: boolean) => void) | null = null;
-let dashboardBaseUrl = "http://localhost:3003";
+let dashboardBaseUrl = "http://localhost:3001";
+let activeCaptureStream: MediaStream | null = null;
+let capturePipelineReady: Promise<void> | null = null;
+
+async function ensureCaptureReady(): Promise<void> {
+  if (capturePipelineReady) {
+    await capturePipelineReady;
+  }
+}
+
+function clearActiveCaptureStream() {
+  activeCaptureStream?.getTracks().forEach((track) => track.stop());
+  activeCaptureStream = null;
+}
+
+function isCaptureStreamLive(): boolean {
+  return Boolean(
+    activeCaptureStream?.getVideoTracks().some((track) => track.readyState === "live"),
+  );
+}
 
 function guessDashboardUrl(apiBaseUrl: string): string {
   try {
     const u = new URL(apiBaseUrl);
     if (u.port === "3000") {
-      u.port = "3003";
+      u.port = "3001";
     }
     return u.origin;
   } catch {
-    return "http://localhost:3003";
+    return "http://localhost:3001";
   }
 }
 
@@ -129,7 +154,7 @@ function mountCaptureCore(opts: SpottingInitOptions) {
   setNetworkBufferLimits(opts.maxNetworkEvents ?? 200);
   setConsoleBufferLimits(opts.maxConsoleEvents ?? 400);
   setUserActionBufferLimits(200);
-  void installCapturePipeline();
+  capturePipelineReady = ensureCapturePipelineReady();
   installUserActionCapture();
   dashboardBaseUrl =
     opts.dashboardUrl?.replace(/\/+$/, "") ?? guessDashboardUrl(opts.apiBaseUrl);
@@ -256,13 +281,29 @@ export function mountWidget(opts: SpottingInitOptions) {
     stopBtn.classList.toggle("hidden", !isRecording);
   };
 
-  const startRecording = async () => {
+  const startRecordingFromStreamPromise = async (
+    streamPromise: Promise<MediaStream>,
+  ) => {
     if (!client || recorder) return;
+    await ensureCaptureReady();
     markCaptureSessionStart();
     setStatus("Select a tab or window to share…");
-    recorder = await startScreenRecording();
+    recorder = await startScreenRecordingFromStreamPromise(streamPromise);
     syncRecordButtons?.(true);
     setStatus("Recording… click Stop recording when finished.");
+  };
+
+  runRecordStart = async () => {
+    if (!client || recorder) return;
+    try {
+      const streamPromise = requestDisplayMediaStream();
+      await startRecordingFromStreamPromise(streamPromise);
+    } catch (e) {
+      recorder = null;
+      syncRecordButtons?.(false);
+      setStatus(e instanceof Error ? e.message : "Recording failed", true);
+      throw e;
+    }
   };
 
   const stopRecording = async () => {
@@ -276,18 +317,6 @@ export function mountWidget(opts: SpottingInitOptions) {
     syncAttachmentsUi?.();
     if (!blob || blob.size === 0) {
       setStatus("Recording was empty — try again.", true);
-    }
-  };
-
-  runRecordStart = async () => {
-    if (!client) return;
-    try {
-      await startRecording();
-    } catch (e) {
-      recorder = null;
-      syncRecordButtons?.(false);
-      setStatus(e instanceof Error ? e.message : "Recording failed", true);
-      throw e;
     }
   };
 
@@ -315,7 +344,8 @@ export function mountWidget(opts: SpottingInitOptions) {
   runScreenshot = async () => {
     setStatus("Choose a tab or window in the picker…");
     try {
-      const png = await captureScreenshotPng();
+      const streamPromise = requestDisplayMediaStream();
+      const png = await captureScreenshotFromStreamPromise(streamPromise);
       pendingScreenshot = png;
       syncAttachmentsUi?.();
       if (!png) {
@@ -404,22 +434,82 @@ export type WidgetRecordingState = {
 
 export function getWidgetRecordingState(): WidgetRecordingState {
   return {
-    isRecording: recorder !== null,
+    isRecording: Boolean(recorder?.isRecording() || isCaptureStreamLive()),
     hasPendingRecording: Boolean(pendingRecording && pendingRecording.size > 0),
   };
 }
 
+function finalizeHeadlessRecording(blob: Blob | null, fromBrowserStop = false) {
+  markCaptureSessionEnd();
+  recorder = null;
+  clearActiveCaptureStream();
+  removeHeadlessRecordingIndicator();
+  syncRecordButtons?.(false);
+
+  if (blob && blob.size > 0) {
+    pendingRecording = blob;
+    syncAttachmentsUi?.();
+    headlessStatus(
+      fromBrowserStop
+        ? "Recording saved — sending report from the extension."
+        : "Recording saved.",
+    );
+    return;
+  }
+
+  pendingRecording = null;
+  syncAttachmentsUi?.();
+  headlessStatus(
+    fromBrowserStop
+      ? "Sharing ended before a recording was saved. Use Stop recording in the extension."
+      : "Recording was empty — try again and record for a few seconds.",
+    true,
+  );
+}
+
+async function beginHeadlessRecording(streamPromise: Promise<MediaStream>) {
+  if (recorder?.isRecording() || isCaptureStreamLive()) {
+    return;
+  }
+  if (recorder) {
+    recorder = null;
+  }
+
+  await ensureCaptureReady();
+  markCaptureSessionStart();
+  headlessStatus("Starting tab recording…");
+  const stream = await streamPromise;
+  activeCaptureStream = stream;
+  recorder = await startScreenRecordingFromStreamPromise(Promise.resolve(stream), {
+    onShareEnded: (blob) => finalizeHeadlessRecording(blob, true),
+  });
+  showHeadlessRecordingIndicator();
+  syncRecordButtons?.(true);
+  headlessStatus("Recording this tab — use Stop recording in the extension when finished.");
+}
+
 export async function startWidgetRecording() {
-  if (!runRecordStart && !client) {
+  if (!client) {
     throw new Error("Spotting is not mounted on this page.");
   }
   if (runRecordStart) {
     await runRecordStart();
   } else {
-    markCaptureSessionStart();
-    headlessStatus("Select a tab or window to share…");
-    recorder = await startScreenRecording();
-    syncRecordButtons?.(true);
+    await beginHeadlessRecording(promptCaptureUserGesture("record"));
+  }
+  if (panelEl) openWidgetPanel();
+}
+
+export async function startWidgetRecordingWithStream(
+  streamPromise: Promise<MediaStream>,
+) {
+  if (!client) {
+    throw new Error("Spotting is not mounted on this page.");
+  }
+  if (runRecordStart) {
+    await runRecordStart();
+  } else {
+    await beginHeadlessRecording(streamPromise);
   }
   if (panelEl) openWidgetPanel();
 }
@@ -433,11 +523,14 @@ export async function stopWidgetRecording() {
   } else if (recorder) {
     headlessStatus("Stopping recording…");
     const blob = await recorder.stop();
-    markCaptureSessionEnd();
-    recorder = null;
-    pendingRecording = blob;
-    syncRecordButtons?.(false);
-    syncAttachmentsUi?.();
+    finalizeHeadlessRecording(blob, false);
+    if (!pendingRecording) {
+      throw new Error(
+        "Recording was empty. Record for a few seconds, then click Stop recording in the extension (not the browser Stop sharing button).",
+      );
+    }
+  } else {
+    throw new Error("No active recording. Click Record tab, allow sharing on the page, then try again.");
   }
   if (panelEl) openWidgetPanel();
 }
@@ -452,10 +545,20 @@ export async function triggerWidgetScreenshot() {
   if (runScreenshot) {
     await runScreenshot();
   } else if (client) {
+    await ensureCaptureReady();
+    markCaptureSessionStart();
+    const streamPromise = promptCaptureUserGesture("screenshot");
     headlessStatus("Choose a tab or window in the picker…");
-    const png = await captureScreenshotPng();
-    pendingScreenshot = png;
-    syncAttachmentsUi?.();
+    try {
+      const png = await captureScreenshotFromStreamPromise(streamPromise);
+      pendingScreenshot = png;
+      syncAttachmentsUi?.();
+      if (!png) {
+        headlessStatus("Screenshot cancelled.", true);
+      }
+    } finally {
+      markCaptureSessionEnd();
+    }
   }
   if (panelEl) openWidgetPanel();
 }
@@ -481,7 +584,7 @@ export function getPendingCaptureState(): PendingCaptureState {
     hasPendingScreenshot: Boolean(pendingScreenshot && pendingScreenshot.size > 0),
     recordingSize: pendingRecording?.size ?? 0,
     screenshotSize: pendingScreenshot?.size ?? 0,
-    isRecording: recorder !== null,
+    isRecording: Boolean(recorder?.isRecording() || isCaptureStreamLive()),
   };
 }
 
@@ -528,6 +631,8 @@ export async function submitWidgetReport(input: {
 
 export function destroyWidget() {
   removeLegacyHosts();
+  removeHeadlessRecordingIndicator();
+  clearActiveCaptureStream();
   destroyed = true;
   recorder = null;
   pendingRecording = null;

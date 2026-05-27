@@ -1,4 +1,8 @@
 import type { NextConfig } from "next"
+import path from "node:path"
+import { fileURLToPath } from "node:url"
+
+const repoRoot = path.join(path.dirname(fileURLToPath(import.meta.url)), "../..")
 
 /** Where Hono runs; used only server-side to proxy `/v1/*` (widget/extension often reuse the web origin by mistake). */
 function apiInternalOrigin(): string {
@@ -12,7 +16,22 @@ function apiInternalOrigin(): string {
 }
 
 const nextConfig: NextConfig = {
+  output: "standalone",
+  outputFileTracingRoot: repoRoot,
   typedRoutes: true,
+  transpilePackages: ["@spotting/ui"],
+  turbopack: {
+    resolveAlias: {
+      nuqs: "./node_modules/nuqs",
+    },
+  },
+  webpack: (config) => {
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      nuqs: path.join(__dirname, "node_modules/nuqs"),
+    }
+    return config
+  },
   images: {
     remotePatterns: [
       {

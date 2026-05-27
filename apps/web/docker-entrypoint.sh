@@ -14,7 +14,7 @@ replace_placeholder() {
   placeholder="$1"
   value="$2"
   escaped_value="$(escape_replacement "$value")"
-  files="$(grep -rl "$placeholder" "$TARGET_DIR" 2>/dev/null || true)"
+  files="$(find "$TARGET_DIR" -type f ! -path '*/cache/*' ! -path '*/dev/*' ! -path '*/types/*' ! -path '*/diagnostics/*' ! -name '*.nft.json' ! -name 'trace*' -exec grep -l "$placeholder" {} + 2>/dev/null || true)"
 
   if [ -z "$files" ]; then
     return 0
@@ -37,7 +37,7 @@ replace_runtime_env_value() {
   key="$1"
   value="$2"
   escaped_value="$(escape_replacement "$value")"
-  files="$(grep -rl "$key" "$TARGET_DIR" 2>/dev/null || true)"
+  files="$(find "$TARGET_DIR" -type f ! -path '*/cache/*' ! -path '*/dev/*' ! -path '*/types/*' ! -path '*/diagnostics/*' ! -name '*.nft.json' ! -name 'trace*' -exec grep -l "$key" {} + 2>/dev/null || true)"
 
   if [ -z "$files" ]; then
     return 0
@@ -79,8 +79,11 @@ main() {
   prepare_build_output
 
   replace_url_placeholder "https://__SPOTTING_SITE_URL__" "$NEXT_PUBLIC_SITE_URL"
+  replace_url_placeholder "http://__SPOTTING_SITE_URL__" "$NEXT_PUBLIC_SITE_URL"
   replace_url_placeholder "https://__SPOTTING_APP_URL__" "$NEXT_PUBLIC_APP_URL"
+  replace_url_placeholder "http://__SPOTTING_APP_URL__" "$NEXT_PUBLIC_APP_URL"
   replace_url_placeholder "https://__SPOTTING_SERVER_URL__" "$NEXT_PUBLIC_SERVER_URL"
+  replace_url_placeholder "http://__SPOTTING_SERVER_URL__" "$NEXT_PUBLIC_SERVER_URL"
   replace_placeholder "__SPOTTING_CAPTURE_KEY__" "$NEXT_PUBLIC_CAPTURE_KEY"
   replace_url_placeholder "https://__SPOTTING_DEMO_URL__" "$NEXT_PUBLIC_DEMO_URL"
   replace_placeholder "__SPOTTING_POSTHOG_KEY__" "$NEXT_PUBLIC_POSTHOG_KEY"

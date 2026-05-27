@@ -1,6 +1,11 @@
+// Copyright (C) 2026 KK Jayakumar
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Spotting-owned persistence schema — attested under Phase 4 separation plan.
+// Implementation: apps/api/prisma/schema.prisma
+
 generator client {
   provider = "prisma-client-js"
-  /// Under `src/` so `tsc` rootDir stays valid; avoids Windows EPERM renaming the engine in `node_modules/.bun/...`.
+  /// Generated under `src/` for stable TypeScript rootDir on all platforms.
   output   = "../src/generated/prisma"
 }
 
@@ -46,6 +51,25 @@ enum ReportVisibility {
   public
 }
 
+enum BillingPlan {
+  free
+  pro
+  studio
+}
+
+enum BillingInterval {
+  monthly
+  yearly
+}
+
+enum SubscriptionStatus {
+  none
+  active
+  canceled
+  past_due
+}
+
+/// Spotting account identity and credentials.
 model User {
   id           String       @id @default(cuid())
   email        String       @unique
@@ -59,7 +83,20 @@ model User {
   memberships  Membership[]
   invitesSent  Invitation[] @relation("InvitationInviter")
   emailVerificationTokens EmailVerificationToken[]
+  passwordResetTokens PasswordResetToken[]
   reportsAuthored Report[] @relation("ReportReporter")
+}
+
+model PasswordResetToken {
+  id         String   @id @default(cuid())
+  userId     String   @map("user_id")
+  tokenHash  String   @unique @map("token_hash")
+  expiresAt  DateTime @map("expires_at")
+  consumedAt DateTime? @map("consumed_at")
+  createdAt  DateTime @default(now()) @map("created_at")
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("password_reset_tokens")
 }
 
 model EmailVerificationToken {
@@ -81,6 +118,7 @@ model Session {
   user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
+/// Team workspace that owns reports, keys, and billing.
 model Organization {
   id                String             @id @default(cuid())
   name              String
@@ -89,17 +127,53 @@ model Organization {
   memberships       Membership[]
   invitations       Invitation[]
   reports           Report[]
+  reportGroups      ReportGroup[]
   capturePublicKeys CapturePublicKey[]
+  subscription      OrganizationSubscription?
+}
+
+/// User-defined folder for organizing bug reports within an organization.
+model ReportGroup {
+  id             String       @id @default(cuid())
+  organizationId String       @map("organization_id")
+  name           String
+  sortOrder      Int          @default(0) @map("sort_order")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  reports        Report[]
+  preferredBy    Membership[] @relation("MembershipPreferredReportGroup")
+
+  @@unique([organizationId, name])
+  @@map("report_groups")
+}
+
+model OrganizationSubscription {
+  id                String             @id @default(cuid())
+  organizationId    String             @unique @map("organization_id")
+  plan              BillingPlan        @default(free)
+  billingInterval   BillingInterval    @default(monthly) @map("billing_interval")
+  status            SubscriptionStatus @default(none)
+  cancelAtPeriodEnd Boolean            @default(false) @map("cancel_at_period_end")
+  currentPeriodStart DateTime?         @map("current_period_start")
+  currentPeriodEnd   DateTime?         @map("current_period_end")
+  createdAt         DateTime           @default(now()) @map("created_at")
+  updatedAt         DateTime           @updatedAt @map("updated_at")
+  organization      Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("organization_subscriptions")
 }
 
 model Membership {
-  id             String         @id @default(cuid())
-  organizationId String         @map("organization_id")
-  userId         String         @map("user_id")
-  role           MembershipRole
-  createdAt      DateTime       @default(now()) @map("created_at")
-  organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                       String         @id @default(cuid())
+  organizationId           String         @map("organization_id")
+  userId                   String         @map("user_id")
+  role                     MembershipRole
+  preferredReportGroupId   String?        @map("preferred_report_group_id")
+  createdAt                DateTime       @default(now()) @map("created_at")
+  organization             Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user                     User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  preferredReportGroup     ReportGroup?   @relation("MembershipPreferredReportGroup", fields: [preferredReportGroupId], references: [id], onDelete: SetNull)
 
   @@unique([organizationId, userId])
 }
@@ -120,7 +194,7 @@ model Invitation {
 model CapturePublicKey {
   id             String       @id @default(cuid())
   organizationId String       @map("organization_id")
-  /// Full public token as issued to embeds (e.g. crk_live_…). Treat as secret in transit only over HTTPS.
+  /// Full public token as issued to embeds (e.g. spk_live_…). Treat as secret in transit only over HTTPS.
   token          String       @unique
   label          String       @default("Embed")
   /// JSON array of allowed origins (strings). Empty array = allow any origin.
@@ -132,6 +206,7 @@ model CapturePublicKey {
   @@map("capture_public_keys")
 }
 
+/// Captured bug report with triage metadata and attachment references.
 model Report {
   id             String           @id @default(cuid())
   organizationId String           @map("organization_id")
@@ -144,9 +219,11 @@ model Report {
   visibility     ReportVisibility @default(private)
   pageUrl        String?          @map("page_url")
   metadataJson   Json?            @map("metadata_json")
+  groupId        String?          @map("group_id")
   createdAt      DateTime         @default(now()) @map("created_at")
   updatedAt      DateTime         @updatedAt @map("updated_at")
   organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  group          ReportGroup?     @relation(fields: [groupId], references: [id], onDelete: SetNull)
   reporterUser   User?            @relation("ReportReporter", fields: [reporterUserId], references: [id], onDelete: SetNull)
   uploadSessions UploadSession[]
 }

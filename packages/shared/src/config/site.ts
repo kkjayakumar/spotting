@@ -2,13 +2,13 @@ export const siteConfig = {
   name: "Spotting",
   title: "Spotting",
   description:
-    "Modern instant bug reporting platform. An open-source alternative to jam.dev and marker.io.",
+    "Capture bugs with recordings, console logs, and network traces — then triage them with your team.",
   keywords: [
     "bug reporting",
     "bug tracker",
     "issue reporting",
-    "developer tools",
-    "open source",
+    "QA tools",
+    "screen recording",
   ],
   seo: {
     titleTemplate: "%s | Spotting",
@@ -23,9 +23,8 @@ export const siteConfig = {
     twitter: "@spottingapp",
   },
   links: {
-    repo: "https://github.com/your-org/spotting",
-    github: "https://github.com/your-org",
+    repo: "https://github.com/kkjayakumar/spotting",
+    github: "https://github.com/kkjayakumar",
     twitter: "https://x.com/spottingapp",
   },
 }
-

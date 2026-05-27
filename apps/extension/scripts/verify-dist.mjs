@@ -23,7 +23,7 @@ if (missing.length > 0) {
   for (const file of missing) {
     console.error(`  - ${file}`);
   }
-  console.error("\nRun from repo root: bun run build:extension");
+  console.error("\nRun from repo root: npm run build:extension");
   process.exit(1);
 }
 

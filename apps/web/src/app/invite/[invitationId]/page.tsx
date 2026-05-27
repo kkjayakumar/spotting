@@ -3,11 +3,11 @@ import type { Metadata } from "next"
 import { InvitationClientView } from "./_components/invitation-client-view"
 
 export const metadata: Metadata = {
-  title: "Invitation",
-  description: "Respond to an organization invitation.",
+  title: "Organization invitation",
+  description: "Accept or decline a Spotting organization invitation.",
 }
 
-interface InvitationPageProps {
+type InvitationPageProps = {
   params: Promise<{
     invitationId: string
   }>

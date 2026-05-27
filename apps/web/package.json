@@ -12,9 +12,9 @@
   },
   "dependencies": {
     "@base-ui/react": "*",
-    "@spotting/env": "workspace:*",
-    "@spotting/shared": "workspace:*",
-    "@spotting/ui": "workspace:*",
+    "@spotting/env": "*",
+    "@spotting/shared": "*",
+    "@spotting/ui": "*",
     "@tanstack/react-form": "*",
     "@tanstack/react-query": "*",
     "@tanstack/react-table": "*",
@@ -30,7 +30,7 @@
     "zod": "*"
   },
   "devDependencies": {
-    "@spotting/config": "workspace:*",
+    "@spotting/config": "*",
     "@tailwindcss/postcss": "*",
     "@tanstack/react-query-devtools": "*",
     "@types/node": "^20",

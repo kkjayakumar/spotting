@@ -1,7 +1,7 @@
 services:
   spotting-postgres:
     image: postgres:16
-    container_name: spotting-postgres
+    container_name: spotting-dev-postgres
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
@@ -9,15 +9,17 @@ services:
     ports:
       - "${POSTGRES_PORT}:5432"
     volumes:
-      - spotting_postgres_data:/var/lib/postgresql/data
+      - spotting_dev_postgres_data:/var/lib/postgresql/data
 
   redis:
     image: redis:7
+    container_name: spotting-dev-redis
     ports:
       - "${REDIS_PORT}:6379"
 
   minio:
     image: minio/minio:latest
+    container_name: spotting-dev-minio
     command: server /data --console-address ":9001"
     environment:
       MINIO_ROOT_USER: minioadmin
@@ -26,8 +28,8 @@ services:
       - "${MINIO_PORT}:9000"
       - "${MINIO_CONSOLE_PORT}:9001"
     volumes:
-      - spotting_minio_data:/data
+      - spotting_dev_minio_data:/data
 
 volumes:
-  spotting_postgres_data:
-  spotting_minio_data:
+  spotting_dev_postgres_data:
+  spotting_dev_minio_data:

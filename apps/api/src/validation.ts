@@ -109,3 +109,11 @@ export function parsePositiveInt(
   }
   return parsed;
 }
+
+export function normalizeEmail(value: string): string {
+  return value.trim().toLowerCase();
+}
+
+export function emailsMatch(left: string, right: string): boolean {
+  return normalizeEmail(left) === normalizeEmail(right);
+}

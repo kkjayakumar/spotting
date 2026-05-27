@@ -1,18 +1,24 @@
+/**
+ * Spotting marketing pricing tiers.
+ * Copyright (C) 2026 KK Jayakumar
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ */
+
 import {
-  billingPlanMonthlyBasePriceUsd,
-  billingPlanYearlyBasePriceUsd,
-} from "../constants/billing"
+  SPOTTING_PLAN_MONTHLY_USD,
+  SPOTTING_PLAN_YEARLY_USD,
+} from "../constants/billing";
 
 export type PricingTier = {
-  name: string
-  slug: "free" | "pro" | "studio"
-  description: string
-  monthlyPrice: number
-  yearlyPrice: number
-  features: string[]
-  highlighted?: boolean
-  cta: string
-}
+  name: string;
+  slug: "free" | "pro" | "studio";
+  description: string;
+  monthlyPrice: number;
+  yearlyPrice: number;
+  features: string[];
+  highlighted?: boolean;
+  cta: string;
+};
 
 export const pricingTiers: PricingTier[] = [
   {
@@ -24,7 +30,7 @@ export const pricingTiers: PricingTier[] = [
     features: [
       "Self-hosted deployment",
       "Run on your own infrastructure",
-      "All features without limits",
+      "All core capture features",
     ],
     cta: "Start for Free",
   },
@@ -32,15 +38,15 @@ export const pricingTiers: PricingTier[] = [
     name: "Pro",
     slug: "pro",
     description: "For growing teams with up to 15 members",
-    monthlyPrice: billingPlanMonthlyBasePriceUsd.pro,
-    yearlyPrice: billingPlanYearlyBasePriceUsd.pro,
+    monthlyPrice: SPOTTING_PLAN_MONTHLY_USD.pro,
+    yearlyPrice: SPOTTING_PLAN_YEARLY_USD.pro,
     features: [
       "Up to 15 team members",
-      "Create and manage unlimited bug reports",
-      "Video and screenshot bug report uploads",
-      "Up to 10 minutes per video recording",
-      "Replay with steps, logs, and network requests",
-      "Public or private share links per report",
+      "Unlimited bug reports",
+      "Video and screenshot uploads",
+      "Up to 10 minutes per recording",
+      "Debugger timeline and network log",
+      "Public or private share links",
     ],
     cta: "Choose Pro",
   },
@@ -48,14 +54,14 @@ export const pricingTiers: PricingTier[] = [
     name: "Studio",
     slug: "studio",
     description: "For teams that need unlimited seats",
-    monthlyPrice: billingPlanMonthlyBasePriceUsd.studio,
-    yearlyPrice: billingPlanYearlyBasePriceUsd.studio,
+    monthlyPrice: SPOTTING_PLAN_MONTHLY_USD.studio,
+    yearlyPrice: SPOTTING_PLAN_YEARLY_USD.studio,
     features: [
       "Everything in Pro",
       "Unlimited team members",
-      "Up to 20 minutes per video recording",
+      "Up to 20 minutes per recording",
     ],
     highlighted: true,
     cta: "Choose Studio",
   },
-]
+];

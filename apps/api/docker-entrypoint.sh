@@ -2,7 +2,7 @@
 set -eu
 
 echo "[spotting-api] applying database schema"
-bun --cwd apps/api db:push
+npm run db:push -w @spotting/api
 
 echo "[spotting-api] starting server"
-exec bun run apps/api/src/index.ts
+exec npm run start -w @spotting/api

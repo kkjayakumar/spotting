@@ -44,7 +44,7 @@ export interface CaptureMetadata {
 }
 
 export interface SpottingInitOptions {
-  /** Public key (e.g. crk_live_…) */
+  /** Public key (e.g. spk_live_…) */
   publicKey: string;
   /** API base URL without trailing slash (e.g. http://localhost:3002) */
   apiBaseUrl: string;

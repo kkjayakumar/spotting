@@ -1,4 +1,8 @@
 import type { NetworkLogEntry } from "../types";
+import {
+  readNetworkResponseBody,
+  serializeNetworkRequestBody,
+} from "./network-body";
 
 let installed = false;
 let buffer: NetworkLogEntry[] = [];
@@ -63,41 +67,46 @@ export function installNetworkInterceptor() {
   const origFetch = window.fetch.bind(window);
   window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
     const t0 = performance.now();
-    const url =
-      typeof input === "string"
-        ? input
-        : input instanceof URL
-          ? input.href
-          : input.url;
-    const method =
-      init?.method ??
-      (input instanceof Request ? input.method : undefined) ??
-      "GET";
-    const requestHeaders: Record<string, string> = {};
-    if (init?.headers) {
-      new Headers(init.headers).forEach((v, k) => {
-        requestHeaders[k] = v;
-      });
-    } else if (input instanceof Request) {
-      input.headers.forEach((v, k) => {
-        requestHeaders[k] = v;
-      });
+    let req: Request;
+    try {
+      req =
+        input instanceof Request ? new Request(input, init) : new Request(input, init);
+    } catch {
+      return origFetch(input, init);
     }
+
+    const requestHeaders: Record<string, string> = {};
+    req.headers.forEach((v, k) => {
+      requestHeaders[k] = v;
+    });
+    let requestBody = serializeNetworkRequestBody(init?.body);
+    if (!requestBody) {
+      try {
+        const text = await req.clone().text();
+        if (text) requestBody = text;
+      } catch {
+        /* ignore */
+      }
+    }
+
     let status: number | undefined;
     let error: string | undefined;
     try {
       const res = await origFetch(input, init);
       status = res.status;
+      const responseBody = await readNetworkResponseBody(res);
       push({
         id: nextId(),
         t: Date.now(),
         type: "fetch",
-        method,
-        url,
+        method: req.method,
+        url: req.url,
         status,
         durationMs: Math.round(performance.now() - t0),
         requestHeaders,
         responseHeaders: headersToRecord(res.headers),
+        requestBody,
+        responseBody,
       });
       return res;
     } catch (e) {
@@ -106,11 +115,12 @@ export function installNetworkInterceptor() {
         id: nextId(),
         t: Date.now(),
         type: "fetch",
-        method,
-        url,
+        method: req.method,
+        url: req.url,
         durationMs: Math.round(performance.now() - t0),
         error,
         requestHeaders,
+        requestBody,
       });
       throw e;
     }
@@ -119,6 +129,7 @@ export function installNetworkInterceptor() {
   const XHR = XMLHttpRequest.prototype;
   const origOpen = XHR.open;
   const origSend = XHR.send;
+  const origSetRequestHeader = XHR.setRequestHeader;
 
   XHR.open = function (
     this: XMLHttpRequest,
@@ -128,10 +139,14 @@ export function installNetworkInterceptor() {
     username?: string | null,
     password?: string | null,
   ) {
-    (this as XMLHttpRequest & { __spotting_method?: string; __spotting_url?: string }).__spotting_method =
-      method;
-    (this as XMLHttpRequest & { __spotting_url?: string }).__spotting_url =
-      typeof url === "string" ? url : url.href;
+    const xhr = this as XMLHttpRequest & {
+      __spotting_method?: string;
+      __spotting_url?: string;
+      __spotting_req_headers?: Record<string, string>;
+    };
+    xhr.__spotting_method = method;
+    xhr.__spotting_url = typeof url === "string" ? url : url.href;
+    xhr.__spotting_req_headers = {};
     return origOpen.call(
       this,
       method,
@@ -142,16 +157,60 @@ export function installNetworkInterceptor() {
     );
   };
 
+  XHR.setRequestHeader = function (
+    this: XMLHttpRequest,
+    name: string,
+    value: string,
+  ) {
+    const xhr = this as XMLHttpRequest & {
+      __spotting_req_headers?: Record<string, string>;
+    };
+    if (!xhr.__spotting_req_headers) {
+      xhr.__spotting_req_headers = {};
+    }
+    xhr.__spotting_req_headers[name] = value;
+    return origSetRequestHeader.call(this, name, value);
+  };
+
   XHR.send = function (this: XMLHttpRequest, body?: Document | XMLHttpRequestBodyInit | null) {
     const t0 = performance.now();
     const xhr = this as XMLHttpRequest & {
       __spotting_method?: string;
       __spotting_url?: string;
+      __spotting_body?: string;
+      __spotting_req_headers?: Record<string, string>;
     };
     const method = xhr.__spotting_method ?? "GET";
     const url = xhr.__spotting_url ?? "";
+    const requestBody =
+      body instanceof Document
+        ? "[document]"
+        : serializeNetworkRequestBody(body ?? undefined);
 
     const done = () => {
+      const responseHeaders: Record<string, string> = {};
+      const raw = xhr.getAllResponseHeaders();
+      for (const line of raw.split(/\r?\n/)) {
+        const idx = line.indexOf(":");
+        if (idx > 0) {
+          responseHeaders[line.slice(0, idx).trim()] = line.slice(idx + 1).trim();
+        }
+      }
+      let responseBody: string | undefined;
+      try {
+        const ct = xhr.getResponseHeader("content-type") ?? "";
+        if (
+          !ct.includes("octet-stream") &&
+          !ct.startsWith("image/") &&
+          !ct.startsWith("video/")
+        ) {
+          responseBody = xhr.responseText ?? "";
+        } else {
+          responseBody = `[binary body omitted, ${ct}]`;
+        }
+      } catch {
+        responseBody = undefined;
+      }
       push({
         id: nextId(),
         t: Date.now(),
@@ -160,6 +219,10 @@ export function installNetworkInterceptor() {
         url,
         status: xhr.status,
         durationMs: Math.round(performance.now() - t0),
+        requestHeaders: xhr.__spotting_req_headers,
+        responseHeaders,
+        requestBody,
+        responseBody,
       });
     };
 
@@ -172,6 +235,8 @@ export function installNetworkInterceptor() {
         url,
         durationMs: Math.round(performance.now() - t0),
         error: "request failed",
+        requestHeaders: xhr.__spotting_req_headers,
+        requestBody,
       });
     };
 

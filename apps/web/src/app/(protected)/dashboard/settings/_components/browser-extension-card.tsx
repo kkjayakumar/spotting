@@ -57,6 +57,7 @@ export function BrowserExtensionCard({
         <CardDescription>
           Capture bugs on any website (internal QA or third-party pages). Works in
           Chrome, Edge, Brave, Arc, Opera, and other Chromium-based browsers.
+          Safari and Firefox are not supported yet.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -75,7 +76,7 @@ export function BrowserExtensionCard({
             <li>
               Build the extension once from the monorepo:{" "}
               <code className="rounded bg-muted px-1.5 py-0.5 text-xs">
-                bun run build:extension
+                npm run build:extension
               </code>
             </li>
             <li>
@@ -103,12 +104,14 @@ export function BrowserExtensionCard({
               that contains <code className="text-xs">manifest.json</code>).
             </li>
             <li>
-              Open the Spotting popup, set <strong>API URL</strong> to the Hono backend
-              (default <code className="text-xs">http://localhost:3000</code>),{" "}
-              <strong>not</strong> the Next.js dashboard port (often{" "}
-              <code className="text-xs">:3003</code>). Add your{" "}
-              <code className="text-xs">crk_…</code> public key, save, then use{" "}
-              <strong>Inject widget on this tab</strong>.
+              Open the Spotting popup on a normal website tab, set{" "}
+              <strong>API URL</strong> to{" "}
+              <code className="text-xs">http://localhost:3000</code>,{" "}
+              <strong>Dashboard URL</strong> to{" "}
+              <code className="text-xs">http://localhost:3001</code>, add your{" "}
+              <code className="text-xs">spk_…</code> public key, save, then use{" "}
+              <strong>Record tab</strong>. Click <strong>Allow recording</strong> on
+              the page, choose what to share, then stop from the extension popup.
             </li>
           </ol>
           <Button
@@ -125,7 +128,7 @@ export function BrowserExtensionCard({
               ZIP is unavailable until{" "}
               <code className="rounded bg-muted px-1 py-0.5">apps/extension/dist</code>{" "}
               exists on this machine (run{" "}
-              <code className="rounded bg-muted px-1 py-0.5">bun run build:extension</code>{" "}
+              <code className="rounded bg-muted px-1 py-0.5">npm run build:extension</code>{" "}
               from the repo root). You can still load unpacked from your local{" "}
               <code className="rounded bg-muted px-1 py-0.5">apps/extension/dist</code>{" "}
               folder.

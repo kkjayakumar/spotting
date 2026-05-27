@@ -21,7 +21,7 @@
     ],
     "paths": {
       "@/*": ["./src/*"],
-      "@spotting/auth/client": ["./src/lib/auth-client.ts"],
+      "@spotting/auth/client": ["./src/lib/api/auth.ts"],
       "@spotting/env/*": ["../../packages/env/*"],
       "@spotting/shared/*": ["../../packages/shared/*"]
     }

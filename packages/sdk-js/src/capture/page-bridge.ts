@@ -3,7 +3,9 @@ import { pushConsoleEntry } from "./console-interceptor";
 import { pushNetworkEntry } from "./network-interceptor";
 
 const EVENT_NAME = "spotting:capture:v1";
+const MESSAGE_SOURCE = "spotting-capture-v1";
 const INJECTED_FLAG = "__SPOTTING_PAGE_BRIDGE_V1__";
+const PAGE_CAPTURE_FLAG = "__SPOTTING_PAGE_CAPTURE_V1__";
 
 let bridgeInstalled = false;
 let injectPromise: Promise<void> | null = null;
@@ -47,26 +49,90 @@ function injectViaExtension(runtime: ChromeRuntime): Promise<void> {
   });
 }
 
-function onCaptureEvent(event: Event) {
-  const detail = (event as CustomEvent).detail as {
-    type?: string;
-    payload?: unknown;
-  };
-  if (!detail?.type) return;
+export function isPageCaptureActive(): boolean {
+  return Boolean((window as unknown as Record<string, unknown>)[PAGE_CAPTURE_FLAG]);
+}
 
-  if (detail.type === "network" && detail.payload) {
-    pushNetworkEntry(detail.payload as NetworkLogEntry);
+function waitForPageCaptureReady(timeoutMs = 5000): Promise<void> {
+  if (isPageCaptureActive()) {
+    return Promise.resolve();
+  }
+
+  return new Promise((resolve, reject) => {
+    const timer = window.setTimeout(() => {
+      window.removeEventListener(EVENT_NAME, onReadyEvent);
+      window.removeEventListener("message", onReadyMessage);
+      if (isPageCaptureActive()) {
+        resolve();
+        return;
+      }
+      reject(new Error("Spotting page capture did not become ready in time"));
+    }, timeoutMs);
+
+    const finish = () => {
+      window.clearTimeout(timer);
+      window.removeEventListener(EVENT_NAME, onReadyEvent);
+      window.removeEventListener("message", onReadyMessage);
+      resolve();
+    };
+
+    const onReadyEvent = (event: Event) => {
+      const detail = (event as CustomEvent).detail as { type?: string };
+      if (detail?.type === "ready") {
+        finish();
+      }
+    };
+
+    const onReadyMessage = (event: MessageEvent) => {
+      const data = event.data as { source?: string; type?: string } | null;
+      if (data?.source === MESSAGE_SOURCE && data.type === "ready") {
+        finish();
+      }
+    };
+
+    window.addEventListener(EVENT_NAME, onReadyEvent);
+    window.addEventListener("message", onReadyMessage);
+  });
+}
+
+type CaptureBridgeMessage = {
+  source?: string;
+  type?: string;
+  payload?: unknown;
+};
+
+function handleCaptureBridgeMessage(data: CaptureBridgeMessage | null | undefined) {
+  if (!data?.type || data.source !== MESSAGE_SOURCE) {
     return;
   }
 
-  if (detail.type === "console" && detail.payload) {
-    pushConsoleEntry(detail.payload as ConsoleLogEntry);
+  if (data.type === "ready") {
+    return;
   }
+
+  if (data.type === "network" && data.payload) {
+    pushNetworkEntry(data.payload as NetworkLogEntry);
+    return;
+  }
+
+  if (data.type === "console" && data.payload) {
+    pushConsoleEntry(data.payload as ConsoleLogEntry);
+  }
+}
+
+function onCaptureMessage(event: MessageEvent) {
+  handleCaptureBridgeMessage(event.data as CaptureBridgeMessage);
+}
+
+function onCaptureEvent(event: Event) {
+  const detail = (event as CustomEvent).detail as CaptureBridgeMessage;
+  handleCaptureBridgeMessage(detail);
 }
 
 export function installPageCaptureBridge(): void {
   if (bridgeInstalled || typeof window === "undefined") return;
   bridgeInstalled = true;
+  window.addEventListener("message", onCaptureMessage);
   window.addEventListener(EVENT_NAME, onCaptureEvent);
 }
 
@@ -74,11 +140,18 @@ export async function ensurePageWorldCapture(): Promise<void> {
   const runtime = getChromeRuntime();
   if (!runtime) return;
   const win = window as unknown as Record<string, unknown>;
+  installPageCaptureBridge();
+
+  if (isPageCaptureActive()) {
+    win[INJECTED_FLAG] = true;
+    return;
+  }
+
   if (win[INJECTED_FLAG]) return;
   if (!injectPromise) {
-    installPageCaptureBridge();
     injectPromise = injectViaExtension(runtime)
-      .then(() => {
+      .then(async () => {
+        await waitForPageCaptureReady();
         win[INJECTED_FLAG] = true;
       })
       .catch((err) => {

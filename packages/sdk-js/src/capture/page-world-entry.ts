@@ -9,6 +9,7 @@
   win[FLAG] = true;
 
   const EVENT_NAME = "spotting:capture:v1";
+  const MESSAGE_SOURCE = "spotting-capture-v1";
   const MAX_BODY_CHARS = 64 * 1024;
   let seq = 0;
 
@@ -18,9 +19,18 @@
   }
 
   function emit(type: string, payload: unknown) {
+    const message = { source: MESSAGE_SOURCE, type, payload };
+    window.postMessage(message, "*");
     window.dispatchEvent(
       new CustomEvent(EVENT_NAME, { detail: { type, payload } }),
     );
+    if (window.parent !== window) {
+      try {
+        window.top?.postMessage(message, "*");
+      } catch {
+        /* cross-origin frame boundary */
+      }
+    }
   }
 
   function headersToRecord(h: Headers): Record<string, string> {
@@ -154,39 +164,32 @@
   const origFetch = window.fetch.bind(window);
   window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
     const t0 = performance.now();
-    const req =
-      typeof input === "string"
-        ? { url: input, method: init?.method ?? "GET" }
-        : input instanceof URL
-          ? { url: input.href, method: init?.method ?? "GET" }
-          : {
-              url: input.url,
-              method: input.method || init?.method || "GET",
-            };
-    let status: number | undefined;
-    let error: string | undefined;
-    let responseHeaders: Record<string, string> | undefined;
-    let responseBody: string | undefined;
+    let req: Request;
+    try {
+      req =
+        input instanceof Request ? new Request(input, init) : new Request(input, init);
+    } catch {
+      return origFetch(input, init);
+    }
+
     const requestHeaders: Record<string, string> = {};
+    req.headers.forEach((v, k) => {
+      requestHeaders[k] = v;
+    });
     let requestBody = serializeRequestBody(init?.body);
-    if (!requestBody && input instanceof Request) {
+    if (!requestBody) {
       try {
-        const text = await input.clone().text();
+        const text = await req.clone().text();
         if (text) requestBody = truncateBody(text);
       } catch {
         /* ignore */
       }
     }
 
-    if (init?.headers) {
-      new Headers(init.headers).forEach((v, k) => {
-        requestHeaders[k] = v;
-      });
-    } else if (input instanceof Request) {
-      input.headers.forEach((v, k) => {
-        requestHeaders[k] = v;
-      });
-    }
+    let status: number | undefined;
+    let error: string | undefined;
+    let responseHeaders: Record<string, string> | undefined;
+    let responseBody: string | undefined;
 
     try {
       const res = await origFetch(input, init);
@@ -227,6 +230,7 @@
   const XHR = XMLHttpRequest.prototype;
   const origOpen = XHR.open;
   const origSend = XHR.send;
+  const origSetRequestHeader = XHR.setRequestHeader;
 
   XHR.open = function (
     this: XMLHttpRequest,
@@ -239,9 +243,11 @@
     const xhr = this as XMLHttpRequest & {
       __spotting_method?: string;
       __spotting_url?: string;
+      __spotting_req_headers?: Record<string, string>;
     };
     xhr.__spotting_method = method;
     xhr.__spotting_url = typeof url === "string" ? url : url.href;
+    xhr.__spotting_req_headers = {};
     return origOpen.call(
       this,
       method,
@@ -250,6 +256,21 @@
       username ?? undefined,
       password ?? undefined,
     );
+  };
+
+  XHR.setRequestHeader = function (
+    this: XMLHttpRequest,
+    name: string,
+    value: string,
+  ) {
+    const xhr = this as XMLHttpRequest & {
+      __spotting_req_headers?: Record<string, string>;
+    };
+    if (!xhr.__spotting_req_headers) {
+      xhr.__spotting_req_headers = {};
+    }
+    xhr.__spotting_req_headers[name] = value;
+    return origSetRequestHeader.call(this, name, value);
   };
 
   XHR.send = function (
@@ -261,6 +282,7 @@
       __spotting_method?: string;
       __spotting_url?: string;
       __spotting_body?: string;
+      __spotting_req_headers?: Record<string, string>;
     };
     const method = xhr.__spotting_method ?? "GET";
     const url = xhr.__spotting_url ?? "";
@@ -298,6 +320,7 @@
         url,
         status: xhr.status,
         durationMs: Math.round(performance.now() - t0),
+        requestHeaders: xhr.__spotting_req_headers,
         responseHeaders,
         requestBody: xhr.__spotting_body,
         responseBody,
@@ -313,6 +336,7 @@
         url,
         durationMs: Math.round(performance.now() - t0),
         error: "request failed",
+        requestHeaders: xhr.__spotting_req_headers,
         requestBody: xhr.__spotting_body,
       });
     };

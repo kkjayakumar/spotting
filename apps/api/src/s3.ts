@@ -1,7 +1,9 @@
 import {
   CreateBucketCommand,
+  DeleteObjectsCommand,
   GetObjectCommand,
   HeadBucketCommand,
+  ListObjectsV2Command,
   PutObjectCommand,
   S3Client,
   type BucketLocationConstraint,
@@ -139,4 +141,54 @@ export async function createPresignedDownloadUrl(
     ResponseContentType: contentType,
   });
   return getSignedUrl(s3Client, command, { expiresIn: expiresInSeconds });
+}
+
+export async function deleteS3Objects(keys: string[]): Promise<number> {
+  const uniqueKeys = [...new Set(keys.map((key) => key.trim()).filter(Boolean))];
+  if (uniqueKeys.length === 0) return 0;
+
+  const bucket = bucketName();
+  const result = await s3Client.send(
+    new DeleteObjectsCommand({
+      Bucket: bucket,
+      Delete: {
+        Objects: uniqueKeys.map((Key) => ({ Key })),
+        Quiet: true,
+      },
+    }),
+  );
+
+  return result.Deleted?.length ?? 0;
+}
+
+export async function deleteS3Prefix(prefix: string): Promise<number> {
+  const normalizedPrefix = prefix.endsWith("/") ? prefix : `${prefix}/`;
+  const bucket = bucketName();
+  let deleted = 0;
+  let continuationToken: string | undefined;
+
+  do {
+    const listing = await s3Client.send(
+      new ListObjectsV2Command({
+        Bucket: bucket,
+        Prefix: normalizedPrefix,
+        ContinuationToken: continuationToken,
+      }),
+    );
+
+    const keys =
+      listing.Contents?.map((item) => item.Key).filter(
+        (key): key is string => typeof key === "string" && key.length > 0,
+      ) ?? [];
+
+    if (keys.length > 0) {
+      deleted += await deleteS3Objects(keys);
+    }
+
+    continuationToken = listing.IsTruncated
+      ? listing.NextContinuationToken
+      : undefined;
+  } while (continuationToken);
+
+  return deleted;
 }

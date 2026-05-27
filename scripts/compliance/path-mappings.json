@@ -1,0 +1,38 @@
+{
+  "description": "Spotting repo paths mapped to Crikket mirror paths for optional lineage checks (CRIKKET_MIRROR_PATH).",
+  "trees": [
+    {
+      "spotting": "apps/web/src",
+      "crikket": "apps/web/src"
+    },
+    {
+      "spotting": "packages/shared/src",
+      "crikket": "packages/shared/src"
+    },
+    {
+      "spotting": "packages/ui/src",
+      "crikket": "packages/ui/src"
+    },
+    {
+      "spotting": "packages/sdk-js/src",
+      "crikket": "sdks/capture/src"
+    },
+    {
+      "spotting": "apps/api/src",
+      "crikket": "apps/server/src"
+    }
+  ],
+  "path_overrides": [
+    {
+      "spotting": "apps/web/src/app/(protected)/dashboard/",
+      "crikket": "apps/web/src/app/(protected)/(dashboard)/"
+    }
+  ],
+  "similarity_watch_paths": [
+    "apps/web/src/app/s/[id]/_components/",
+    "apps/web/src/features/report-viewer/",
+    "apps/web/src/features/reports/dashboard/"
+  ],
+  "similarity_threshold_percent": 85,
+  "target_threshold_percent": 70
+}

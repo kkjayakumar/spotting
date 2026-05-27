@@ -19,11 +19,15 @@ import type { Route } from "next"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import type * as React from "react"
+import { SidebarProjectsNav } from "@/components/sidebar-projects-nav"
 import { TeamSwitcher } from "@/components/team-switcher"
 import { UserNav } from "@/components/user-nav"
+import { useActiveOrganizationId } from "@/features/reports/dashboard/hooks/use-active-organization-id"
 import { getDocsUrl } from "@/lib/site"
 
-type Organization = typeof authClient.$Infer.Organization
+type Organization = typeof authClient.$Infer.Organization & {
+  role?: string
+}
 
 interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
   user: typeof authClient.$Infer.Session.user
@@ -56,6 +60,11 @@ export function AppSidebar({
 }: AppSidebarProps) {
   const pathname = usePathname()
   const docsUrl = getDocsUrl()
+  const { organizationId, memberRole } = useActiveOrganizationId()
+  const resolvedRole =
+    memberRole ??
+    organizations.find((organization) => organization.id === organizationId)
+      ?.role
 
   return (
     <Sidebar collapsible="icon" variant="inset" {...props}>
@@ -91,6 +100,10 @@ export function AppSidebar({
                 )
               })}
             </SidebarMenu>
+            <SidebarProjectsNav
+              memberRole={resolvedRole}
+              organizationId={organizationId ?? activeOrganization?.id}
+            />
           </SidebarGroupContent>
         </SidebarGroup>
         <SidebarGroup className="mt-auto">

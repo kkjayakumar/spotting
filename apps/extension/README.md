@@ -15,20 +15,20 @@ Inject the Spotting bug-reporter widget into **any** site without touching that 
 From the monorepo root:
 
 ```bash
-bun run build:extension
+npm run build:extension
 # Builds @spotting/sdk-js first, then the extension → apps/extension/dist/
 ```
 
 Or from this directory:
 
 ```bash
-bun run build       # one-off build
-bun run dev         # watch mode (re-builds on file change)
+npm run build       # one-off build
+npm run dev         # watch mode (re-builds on file change)
 ```
 
 ## Load in Chrome (Developer Mode)
 
-1. Run `bun run build:extension` from the repo root.
+1. Run `npm run build:extension` from the repo root.
 2. Open **`chrome://extensions`**.
 3. Enable **Developer mode** (top-right toggle).
 4. Click **Load unpacked** → select `apps/extension/dist/`.
@@ -38,7 +38,7 @@ bun run dev         # watch mode (re-builds on file change)
 
 1. Open any HTTP/HTTPS tab.
 2. Click the **Spotting Capture** icon.
-3. Enter your **API base URL** (e.g. `http://localhost:3000`) and **Public key** (starts with `crk_live_`).
+3. Enter your **API base URL** (e.g. `http://localhost:3000`) and **Public key** (starts with `spk_live_`).
 4. Click **Save settings** to persist across sessions.
 5. Click **Inject widget on this tab** — the floating Spotting button will appear on the page.
 6. Click **Remove widget** to tear it down.
@@ -47,4 +47,8 @@ bun run dev         # watch mode (re-builds on file change)
 
 ## Public key prefix
 
-Keys are issued by the API as `crk_live_<uuid>`. Copy them from the Spotting dashboard → Settings → Capture Keys.
+Keys are issued by the API as `spk_live_<uuid>`. Copy them from **Dashboard → Settings → Capture Keys**.
+
+**New setups must use `spk_` keys only.** Legacy `crk_*` keys are not accepted in the extension UI. If you migrated from an older deployment, run the [capture key migration](../../docs/ops/capture-key-migration.md) and paste the updated `spk_*` token.
+
+See also [Capture pipeline spec](../../docs/specs/capture-pipeline.md).

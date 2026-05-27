@@ -12,15 +12,11 @@
     "check-types": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
-    "@orpc/client": "*",
-    "@orpc/server": "*",
-    "@orpc/tanstack-query": "*",
-    "@tanstack/react-query": "*",
     "posthog-js": "*",
     "zod": "*"
   },
   "devDependencies": {
-    "@spotting/config": "workspace:*",
+    "@spotting/config": "*",
     "typescript": "*"
   }
 }

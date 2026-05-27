@@ -320,8 +320,8 @@
 
   --sidebar: oklch(0.1 0.01 245);
   --sidebar-foreground: oklch(0.9 0.005 240);
-  --sidebar-primary: oklch(0.8 0.08 240);
-  --sidebar-primary-foreground: oklch(0.15 0.05 240);
+  --sidebar-primary: oklch(0.55 0.18 250);
+  --sidebar-primary-foreground: oklch(0.99 0 0);
   --sidebar-accent: oklch(0.18 0.012 245);
   --sidebar-accent-foreground: oklch(0.9 0.005 240);
   --sidebar-border: oklch(0.16 0.01 245);
@@ -334,8 +334,7 @@
 
 /* Base Glassmorphism Overlay on Top of Solid Canvas */
 .google-theme [data-sidebar="sidebar"],
-.google-theme header,
-.google-theme [class*="bg-sidebar"] {
+.google-theme header {
   background: rgba(255, 255, 255, 0.75) !important;
   backdrop-filter: blur(20px) saturate(180%) !important;
   -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
@@ -343,8 +342,7 @@
 }
 
 .dark .google-theme [data-sidebar="sidebar"],
-.dark .google-theme header,
-.dark .google-theme [class*="bg-sidebar"] {
+.dark .google-theme header {
   background: rgba(16, 18, 23, 0.75) !important;
   backdrop-filter: blur(20px) saturate(180%) !important;
   -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
@@ -377,7 +375,22 @@
   backdrop-filter: blur(10px) !important;
 }
 
-/* Active sidebar item highlighting */
+/* Organization initials badge — keep solid brand blue + white text in all themes */
+.google-theme .spotting-org-badge {
+  background: #1a73e8 !important;
+  color: #ffffff !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+}
+
+.dark .google-theme .spotting-org-badge,
+.google-theme.dark .spotting-org-badge {
+  background: #4285f4 !important;
+  color: #ffffff !important;
+}
+
+.google-theme .spotting-org-badge-text {
+  color: #ffffff !important;
+}
 .google-theme [class*="SidebarMenuButton"][data-active="true"],
 .google-theme button[class*="active"] {
   background-color: rgba(26, 115, 232, 0.1) !important;

@@ -1,7 +1,7 @@
 import { createEnv } from "@t3-oss/env-nextjs"
 import { z } from "zod"
 
-/** Local dev / CI defaults when env vars are not injected (e.g. `bun run verify`). */
+/** Local dev / CI defaults when env vars are not injected (e.g. `npm run verify`). */
 const DEFAULT_SITE_URL = "http://localhost:3003"
 const DEFAULT_APP_URL = "http://localhost:3003"
 const DEFAULT_SERVER_URL = "http://localhost:3000"

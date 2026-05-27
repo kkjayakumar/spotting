@@ -1,39 +1,51 @@
-import { defineConfig, devices } from '@playwright/test';
+import { defineConfig, devices } from "@playwright/test";
+import { resolve } from "node:path";
 
-const e2eEnv = {
-  NEXT_PUBLIC_SITE_URL: 'http://localhost:3003',
-  NEXT_PUBLIC_APP_URL: 'http://localhost:3003',
-  NEXT_PUBLIC_SERVER_URL: 'http://localhost:3000',
-  NEXT_PUBLIC_GOOGLE_AUTH_ENABLED: 'false',
-};
+import { E2E_ENV, PLAYWRIGHT_REUSE_SERVER } from "./e2e/env";
+
+const repoRoot = resolve(__dirname, "../..");
 
 export default defineConfig({
-  testDir: './e2e',
-  fullyParallel: true,
+  testDir: "./e2e",
+  globalSetup: "./e2e/global-setup.ts",
+  fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
-  reporter: 'html',
+  workers: 1,
+  reporter: "html",
   use: {
-    baseURL: e2eEnv.NEXT_PUBLIC_APP_URL,
-    trace: 'on-first-retry',
+    baseURL: E2E_ENV.NEXT_PUBLIC_APP_URL,
+    trace: "on-first-retry",
   },
   projects: [
     {
-      name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      name: "chromium",
+      use: { ...devices["Desktop Chrome"] },
     },
   ],
-  webServer: {
-    command: 'bun run dev',
-    cwd: '.',
-    url: e2eEnv.NEXT_PUBLIC_APP_URL,
-    reuseExistingServer: !process.env.CI,
-    timeout: 120_000,
-    env: {
-      ...process.env,
-      ...e2eEnv,
+  webServer: [
+    {
+      command: "npm run dev -w @spotting/api",
+      cwd: repoRoot,
+      url: "http://localhost:3000/healthz",
+      reuseExistingServer: PLAYWRIGHT_REUSE_SERVER,
+      timeout: 120_000,
+      env: {
+        ...process.env,
+        ...E2E_ENV,
+      },
     },
-  },
-  testMatch: '**/*.spec.ts',
+    {
+      command: "npm run dev",
+      cwd: ".",
+      url: E2E_ENV.NEXT_PUBLIC_APP_URL,
+      reuseExistingServer: PLAYWRIGHT_REUSE_SERVER,
+      timeout: 120_000,
+      env: {
+        ...process.env,
+        ...E2E_ENV,
+      },
+    },
+  ],
+  testMatch: "**/*.spec.ts",
 });

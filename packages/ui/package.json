@@ -13,7 +13,7 @@
   },
   "scripts": {
     "check-types": "tsc --noEmit",
-    "ui": "bunx shadcn@latest"
+    "ui": "npx shadcn@latest"
   },
   "dependencies": {
     "@base-ui/react": "*",
@@ -33,7 +33,6 @@
     "motion": "*",
     "nanoid": "*",
     "next-themes": "*",
-    "nuqs": "*",
     "react-day-picker": "*",
     "react-resizable-panels": "*",
     "rough-notation": "*",
@@ -43,7 +42,7 @@
     "zod": "*"
   },
   "devDependencies": {
-    "@spotting/config": "workspace:*",
+    "@spotting/config": "*",
     "@tailwindcss/postcss": "*",
     "@types/react": "*",
     "@types/react-dom": "*",
@@ -54,6 +53,7 @@
     "tw-animate-css": "*"
   },
   "peerDependencies": {
+    "nuqs": ">=2.8.0",
     "react": "^19.2.3",
     "react-dom": "^19.2.3"
   }

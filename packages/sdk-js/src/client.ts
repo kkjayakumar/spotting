@@ -1,4 +1,6 @@
 import type { CaptureMetadata, SubmitCaptureInput } from "./types";
+import { readActiveReportGroupIdFromExtensionStorage } from "./report-group-preference";
+import { isCapturePublicKey } from "@spotting/shared/constants/capture-keys";
 import { getConsoleLog } from "./capture/console-interceptor";
 import { getNetworkLog } from "./capture/network-interceptor";
 import {
@@ -146,8 +148,8 @@ export class SpottingClient {
   readonly apiBaseUrl: string;
 
   constructor(options: SpottingClientOptions) {
-    if (!options.publicKey?.startsWith("crk_")) {
-      throw new Error("publicKey must look like crk_…");
+    if (!options.publicKey || !isCapturePublicKey(options.publicKey)) {
+      throw new Error("publicKey must look like spk_live_…");
     }
     this.publicKey = options.publicKey;
     this.apiBaseUrl = resolveCaptureApiBaseUrl(options.apiBaseUrl);
@@ -182,7 +184,12 @@ export class SpottingClient {
     description?: string;
     pageUrl?: string;
     metadata: CaptureMetadata;
+    groupId?: string | null;
   }): Promise<{ id: string }> {
+    const groupId =
+      input.groupId === undefined
+        ? await readActiveReportGroupIdFromExtensionStorage()
+        : input.groupId ?? undefined;
     const res = await captureFetch(
       this.apiBaseUrl,
       `${this.apiBaseUrl}/v1/capture/reports`,
@@ -196,6 +203,7 @@ export class SpottingClient {
           description: input.description,
           pageUrl: input.pageUrl,
           metadataJson: input.metadata,
+          ...(groupId ? { groupId } : {}),
         }),
       },
       "createReport",

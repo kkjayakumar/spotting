@@ -40,7 +40,7 @@ export async function GET() {
     return NextResponse.json(
       {
         error:
-          "Extension build not found. From the repo root run: bun run build:extension",
+          "Extension build not found. From the repo root run: npm run build:extension",
       },
       { status: 503 }
     )

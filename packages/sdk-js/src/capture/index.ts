@@ -10,9 +10,15 @@ export {
   installNetworkInterceptor,
   setNetworkBufferLimits,
 } from "./network-interceptor";
-export { captureScreenshotPng } from "./screenshot";
+export {   captureScreenshotFromStream,
+  captureScreenshotFromStreamPromise,
+  captureScreenshotPng,
+} from "./screenshot";
+export { isUserGestureMediaError, requestDisplayMediaStream } from "./display-media";
 export {
+  attachRecorderToStream,
   startScreenRecording,
+  startScreenRecordingFromStreamPromise,
   stopScreenRecording,
   type RecorderState,
 } from "./screen-recorder";
@@ -30,7 +36,12 @@ export {
   markCaptureSessionStart,
   resetCaptureSession,
 } from "./capture-session";
-export { installCapturePipeline } from "./install-capture";
+export { installCapturePipeline, ensureCapturePipelineReady } from "./install-capture";
+export {
+  ensurePageWorldCapture,
+  hasChromeExtensionRuntime,
+  installPageCaptureBridge,
+} from "./page-bridge";
 export {
   getCaptureFetchTransport,
   setCaptureFetchTransport,

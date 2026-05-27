@@ -2,16 +2,58 @@
 
 import {
   destroy,
+  ensureCapturePipelineReady,
   getPendingCaptureState,
   getWidgetRecordingState,
   init,
+  installPageCaptureBridge,
   startWidgetRecording,
+  startWidgetRecordingWithStream,
   stopWidgetRecording,
   submitWidgetReport,
   triggerWidgetScreenshot,
 } from "@spotting/sdk-js";
 
 import { installExtensionFetchBridge } from "./extension-fetch-bridge";
+import {
+  captureCurrentTabStream,
+  isExtensionTabCaptureAvailable,
+} from "./tab-capture";
+
+const REPORT_GROUP_STORAGE_KEY = "spotting_report_group_id";
+
+function readLocalReportGroupPreference(): string | null {
+  try {
+    const raw = window.localStorage.getItem("spotting_report_group_pref");
+    if (!raw) {
+      return null;
+    }
+    const parsed = JSON.parse(raw) as { groupId?: string | null };
+    return typeof parsed.groupId === "string" && parsed.groupId.length > 0
+      ? parsed.groupId
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function syncDashboardReportGroupPreference(dashboardUrl?: string) {
+  if (typeof window === "undefined" || !window.location.pathname.startsWith("/dashboard")) {
+    return;
+  }
+  const urlGroupId = new URLSearchParams(window.location.search).get("groupId");
+  const fromUrl =
+    urlGroupId && urlGroupId.length > 0 && urlGroupId !== "none" ? urlGroupId : null;
+  const normalized = fromUrl ?? readLocalReportGroupPreference();
+  void chrome.storage.local.set({ [REPORT_GROUP_STORAGE_KEY]: normalized });
+}
+
+function installDashboardGroupSync(dashboardUrl?: string) {
+  syncDashboardReportGroupPreference(dashboardUrl);
+  window.addEventListener("popstate", () => syncDashboardReportGroupPreference(dashboardUrl));
+  window.addEventListener("hashchange", () => syncDashboardReportGroupPreference(dashboardUrl));
+  window.setInterval(() => syncDashboardReportGroupPreference(dashboardUrl), 2000);
+}
 
 export type MountPayload = {
   publicKey: string;
@@ -120,7 +162,11 @@ function registerContentScript() {
             if (message.type === "SPOTTING_SCREENSHOT") {
               await triggerWidgetScreenshot();
             } else if (message.type === "SPOTTING_START_RECORD") {
-              await startWidgetRecording();
+              if (isExtensionTabCaptureAvailable()) {
+                await startWidgetRecordingWithStream(captureCurrentTabStream());
+              } else {
+                await startWidgetRecording();
+              }
             } else if (message.type === "SPOTTING_STOP_RECORD") {
               await stopWidgetRecording();
             }
@@ -165,6 +211,9 @@ function registerContentScript() {
 if (!(globalThis as Record<string, unknown>)[CONTENT_SCRIPT_KEY]) {
   (globalThis as Record<string, unknown>)[CONTENT_SCRIPT_KEY] = true;
   installExtensionFetchBridge();
+  installPageCaptureBridge();
+  void ensureCapturePipelineReady();
+  installDashboardGroupSync();
   registerContentScript();
 }
 

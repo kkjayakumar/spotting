@@ -1,5 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { createLogger } from "@spotting/config/logger";
 
 const logger = createLogger("env");
@@ -20,12 +21,13 @@ function parseEnvLine(line: string): { key: string; value: string } | null {
   return { key, value };
 }
 
-function applyEnvFile(path: string, override: boolean): boolean {
+function applyEnvFile(path: string, override: boolean, systemEnvKeys: Set<string>): boolean {
   if (!existsSync(path)) return false;
   const content = readFileSync(path, "utf8");
   for (const line of content.split(/\r?\n/)) {
     const parsed = parseEnvLine(line);
     if (!parsed) continue;
+    if (systemEnvKeys.has(parsed.key)) continue;
     if (override || process.env[parsed.key] === undefined) {
       process.env[parsed.key] = parsed.value;
     }
@@ -35,7 +37,8 @@ function applyEnvFile(path: string, override: boolean): boolean {
 
 /** Load repo root `.env` then `apps/api/.env` (API overrides). */
 export function loadApiEnv() {
-  const apiDir = resolve(import.meta.dir, "..");
+  const systemEnvKeys = new Set(Object.keys(process.env));
+  const apiDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
   const repoRoot = resolve(apiDir, "../..");
   const envFiles = [
     resolve(repoRoot, ".env"),
@@ -43,7 +46,7 @@ export function loadApiEnv() {
   ] as const;
 
   for (const [index, file] of envFiles.entries()) {
-    const loaded = applyEnvFile(file, index === envFiles.length - 1);
+    const loaded = applyEnvFile(file, index === envFiles.length - 1, systemEnvKeys);
     if (loaded) {
       logger.info("env_file_loaded", { path: file });
     }

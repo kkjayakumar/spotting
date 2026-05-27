@@ -1,29 +1,37 @@
+/**
+ * Spotting identifier generator.
+ * Copyright (C) 2026 KK Jayakumar
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ */
+
 import { customAlphabet } from "nanoid"
 
-const prefixes: Record<string, unknown> = {}
+const ALPHABET =
+  "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
 
-interface GenerateIdOptions {
+const PREFIX_REGISTRY: Record<string, string> = {}
+
+type GenerateIdOptions = {
   length?: number
   separator?: string
 }
 
 export function generateId(
-  prefixOrOptions?: keyof typeof prefixes | GenerateIdOptions,
-  inputOptions: GenerateIdOptions = {}
-) {
-  const finalOptions =
-    typeof prefixOrOptions === "object" ? prefixOrOptions : inputOptions
-
-  const prefix =
+  prefixOrOptions?: keyof typeof PREFIX_REGISTRY | GenerateIdOptions,
+  options: GenerateIdOptions = {}
+): string {
+  const resolvedOptions =
+    typeof prefixOrOptions === "object" ? prefixOrOptions : options
+  const prefixKey =
     typeof prefixOrOptions === "object" ? undefined : prefixOrOptions
 
-  const { length = 12, separator = "_" } = finalOptions
-  const id = customAlphabet(
-    "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz",
-    length
-  )()
+  const length = resolvedOptions.length ?? 12
+  const separator = resolvedOptions.separator ?? "_"
+  const randomPart = customAlphabet(ALPHABET, length)()
 
-  return prefix && prefix in prefixes
-    ? `${prefixes[prefix]}${separator}${id}`
-    : id
+  if (prefixKey && prefixKey in PREFIX_REGISTRY) {
+    return `${PREFIX_REGISTRY[prefixKey]}${separator}${randomPart}`
+  }
+
+  return randomPart
 }

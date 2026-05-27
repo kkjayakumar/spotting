@@ -16,8 +16,8 @@
     "zod": "*"
   },
   "devDependencies": {
-    "@spotting/config": "workspace:*",
-    "@types/bun": "*",
+    "@spotting/config": "*",
+    "@types/node": "^22",
     "typescript": "*"
   }
 }

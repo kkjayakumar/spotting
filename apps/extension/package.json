@@ -9,7 +9,8 @@
     "check-types": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
-    "@spotting/sdk-js": "workspace:*"
+    "@spotting/sdk-js": "*",
+    "@spotting/shared": "*"
   },
   "devDependencies": {
     "@types/chrome": "^0.0.287",

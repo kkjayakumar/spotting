@@ -1,6 +1,10 @@
 # Spotting
 
-Open-source bug reporting platform with screen recording, console/network capture, and a Chrome extension. An alternative to Jam.dev and Marker.io.
+Open-source bug reporting platform with screen recording, console/network capture, and a Chrome extension. Built for QA teams and product engineering workflows.
+
+**License:** Licensed under the GNU Affero General Public License version 3 (AGPL-3.0) under KK Jayakumar. See [LICENSE](LICENSE) for details.
+
+**Independence program:** [PROJECT_PLAN_CHECKLIST.md](PROJECT_PLAN_CHECKLIST.md) · [clean-room policy](docs/clean-room-policy.md)
 
 ## Features
 
@@ -31,7 +35,7 @@ Open-source bug reporting platform with screen recording, console/network captur
 
 ### Prerequisites
 
-- [Bun](https://bun.sh) 1.3+
+- [Node.js](https://nodejs.org/) 22+ and npm 10+
 - [Docker](https://docs.docker.com/get-docker/) (for Postgres, Redis, MinIO)
 
 ### 1. Install dependencies
@@ -39,7 +43,7 @@ Open-source bug reporting platform with screen recording, console/network captur
 ```bash
 git clone https://github.com/your-org/spotting.git
 cd spotting
-bun install
+npm install
 ```
 
 ### 2. Configure environment
@@ -58,7 +62,7 @@ cp apps/web/.env.example apps/web/.env
 ### 3. Start infrastructure and database
 
 ```bash
-bun run demo:setup
+npm run demo:setup
 ```
 
 This starts Docker infra, generates the Prisma client, and pushes the schema.
@@ -66,15 +70,15 @@ This starts Docker infra, generates the Prisma client, and pushes the schema.
 ### 4. Start all services
 
 ```bash
-bun run demo:start
+npm run demo:start
 ```
 
 Or run individually:
 
 ```bash
-bun run dev:api      # API  → http://localhost:3000
-bun run dev:web      # Web  → http://localhost:3003
-bun run dev:worker   # Worker (maintenance ticks)
+npm run dev:api      # API  → http://localhost:3000
+npm run dev:web      # Web  → http://localhost:3003
+npm run dev:worker   # Worker (maintenance ticks)
 ```
 
 ### Local URLs
@@ -92,7 +96,7 @@ bun run dev:worker   # Worker (maintenance ticks)
 From the **repo root** (not `apps/extension`):
 
 ```bash
-bun run build:extension
+npm run build:extension
 ```
 
 Load unpacked from `apps/extension/dist` in Chrome.
@@ -187,8 +191,8 @@ CERTBOT_EMAIL=admin@yourdomain.com
 
 # Secrets
 POSTGRES_PASSWORD=<long-random-password>
-BETTER_AUTH_SECRET=$(openssl rand -hex 32)
-BETTER_AUTH_URL=https://api-spotting.yourdomain.com
+SPOTTING_AUTH_SECRET=$(openssl rand -hex 32)
+SPOTTING_AUTH_URL=https://api-spotting.yourdomain.com
 
 # AWS S3 + SES
 S3_REGION=ap-south-1
@@ -210,8 +214,8 @@ openssl rand -hex 32
 #### 4. Start application
 
 ```bash
-docker compose up -d --build
-docker compose exec -T api bun --cwd apps/api db:push
+npm run docker:up
+# API entrypoint runs `db:push` on start; worker waits for API health.
 ```
 
 Verify locally on the server:
@@ -319,7 +323,7 @@ Open the dashboard, sign up, and confirm the verification email arrives.
 
 ```bash
 # Logs
-docker compose logs -f
+npm run docker:logs
 docker compose logs -f api worker web
 
 # Restart
@@ -327,15 +331,14 @@ docker compose restart
 
 # Rebuild after code update
 git pull
-docker compose up -d --build
-# API entrypoint runs `db:push` on start; worker waits for API health.
+npm run docker:up
 
 # Manual schema apply (if worker logs missing tables)
-docker compose exec -T api bun --cwd apps/api db:push
+docker compose exec -T api npm run db:push -w @spotting/api
 docker compose restart worker
 
 # Stop
-docker compose down
+npm run docker:down
 ```
 
 ---
@@ -344,13 +347,13 @@ docker compose down
 
 | Command | Description |
 |---------|-------------|
-| `bun run infra:up` | Start local Postgres, Redis, MinIO |
-| `bun run infra:down` | Stop local infra |
-| `bun run db:generate` | Generate Prisma client |
-| `bun run db:push` | Push schema to database |
-| `bun run verify` | Lint, typecheck, test, build |
-| `bun run test` | Run all tests |
-| `bun run build:extension` | Build Chrome extension |
+| `npm run infra:up` | Start local Postgres, Redis, MinIO |
+| `npm run infra:down` | Stop local infra |
+| `npm run db:generate` | Generate Prisma client |
+| `npm run db:push` | Push schema to database |
+| `npm run verify` | Lint, typecheck, test, build |
+| `npm run test` | Run all tests |
+| `npm run build:extension` | Build Chrome extension |
 
 See [docs/TESTING.md](./docs/TESTING.md) for test and troubleshooting guidance.
 
@@ -371,6 +374,7 @@ Errors use a standard envelope:
 
 ---
 
-## License
+## License & compliance
 
-Add your license file at `/LICENSE` before public distribution.
+Licensed under the GNU Affero General Public License version 3 (AGPL-3.0) under KK Jayakumar — see [LICENSE](LICENSE) for details.  
+Contributing and independence rules: [clean-room policy](docs/clean-room-policy.md) · [separation plan](docs/provenance/SEPARATION-PLAN.md)

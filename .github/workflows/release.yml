@@ -10,21 +10,37 @@ jobs:
   verify-and-release:
     name: Verify & Publish Release
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     permissions:
       contents: write
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: spotting_release
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
+      - name: Setup Node
+        uses: actions/setup-node@v4
         with:
-          bun-version: latest
+          node-version: 22
+          cache: npm
 
       - name: Install Dependencies
-        run: bun install --frozen-lockfile
+        run: npm ci
 
       - name: Run Full Verification Gate
         env:
@@ -32,15 +48,12 @@ jobs:
           NEXT_PUBLIC_APP_URL: http://localhost:3003
           NEXT_PUBLIC_SERVER_URL: http://localhost:3000
           NEXT_PUBLIC_GOOGLE_AUTH_ENABLED: "false"
-        run: bun run verify
+        run: npm run verify
 
       - name: Get Playwright Version
         id: playwright-version
         run: |
-          PLAYWRIGHT_VERSION=$(bun pm ls | grep "@playwright/test" | head -n 1 | awk -F'@' '{print $NF}' || echo "latest")
-          if [ -z "$PLAYWRIGHT_VERSION" ]; then
-            PLAYWRIGHT_VERSION="latest"
-          fi
+          PLAYWRIGHT_VERSION=$(node -p "require('./package.json').devDependencies['@playwright/test'].replace(/^\\^/, '')")
           echo "version=$PLAYWRIGHT_VERSION" >> $GITHUB_OUTPUT
         shell: bash
 
@@ -55,40 +68,36 @@ jobs:
 
       - name: Install Playwright Browsers & Deps
         if: steps.cache-playwright.outputs.cache-hit != 'true'
-        run: bunx playwright install --with-deps
+        run: npx playwright install --with-deps
 
       - name: Install Playwright System Dependencies (if cached)
         if: steps.cache-playwright.outputs.cache-hit == 'true'
-        run: bunx playwright install-deps chromium
+        run: npx playwright install-deps chromium
 
       - name: Ensure Playwright Chromium (cache may be stale)
         if: steps.cache-playwright.outputs.cache-hit == 'true'
-        run: bunx playwright install chromium
+        run: npx playwright install chromium
 
-      - name: Run Playwright E2E Tests (Safe Check)
+      - name: Run Playwright E2E Tests
         env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/spotting_release?schema=public
           NEXT_PUBLIC_SITE_URL: http://localhost:3003
           NEXT_PUBLIC_APP_URL: http://localhost:3003
           NEXT_PUBLIC_SERVER_URL: http://localhost:3000
           NEXT_PUBLIC_GOOGLE_AUTH_ENABLED: "false"
-        run: |
-          if [ -f "playwright.config.ts" ] || [ -f "playwright.config.js" ] || grep -q "playwright" package.json || [ -f "apps/web/playwright.config.ts" ]; then
-            bun run test:e2e
-          else
-            echo "No Playwright configuration or scripts found in workspace. Skipping E2E test execution."
-          fi
-        shell: bash
+          SPOTTING_API_INTERNAL_URL: http://127.0.0.1:3000
+          CORS_ORIGINS: http://localhost:3003
+        run: npm run test:e2e
 
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           TAG_NAME="${{ github.ref_name }}"
-          # Fallback if manually dispatched without a tag context
           if [ -z "$TAG_NAME" ] || [[ "$TAG_NAME" == *"main"* ]]; then
             TAG_NAME="v$(date +'%Y.%m.%d')-manual"
           fi
-          
+
           echo "Publishing GitHub Release for tag: $TAG_NAME"
           gh release create "$TAG_NAME" \
             --title "Release $TAG_NAME" \

@@ -3,13 +3,21 @@
 import { Button, buttonVariants } from "@spotting/ui/components/ui/button"
 import { useCooldown } from "@spotting/ui/hooks/use-cooldown"
 import { cn } from "@spotting/ui/lib/utils"
+import { useQueryClient } from "@tanstack/react-query"
 import { X } from "lucide-react"
 import Link from "next/link"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { toast } from "sonner"
 import { authClient } from "@spotting/auth/client"
 
-export function UnverifiedEmailBanner() {
+type UnverifiedEmailBannerProps = {
+  initialVerified?: boolean
+}
+
+export function UnverifiedEmailBanner({
+  initialVerified = false,
+}: UnverifiedEmailBannerProps) {
+  const queryClient = useQueryClient()
   const { data: session } = authClient.useSession()
   const [isSendingCode, setIsSendingCode] = useState(false)
   const [isDismissed, setIsDismissed] = useState(false)
@@ -17,6 +25,13 @@ export function UnverifiedEmailBanner() {
     durationSeconds: 60,
     key: "auth-code-send",
   })
+
+  useEffect(() => {
+    void queryClient.invalidateQueries({ queryKey: ["session"] })
+  }, [queryClient])
+
+  const isVerified =
+    initialVerified || Boolean(session?.user?.emailVerified)
 
   const handleResendCode = async () => {
     const email = session?.user?.email?.trim()
@@ -50,7 +65,7 @@ export function UnverifiedEmailBanner() {
 
   const handleDismiss = () => setIsDismissed(true)
 
-  if (isDismissed) {
+  if (isDismissed || isVerified) {
     return null
   }
 

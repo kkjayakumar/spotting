@@ -12,6 +12,7 @@ import { toast } from "sonner"
 import { AuthShell } from "@/components/auth/auth-shell"
 import { OtpCodeInput } from "@/components/auth/otp-code-input"
 import { getAuthErrorMessage } from "@/lib/auth"
+import { queryClient } from "@/lib/api"
 import { verifyEmailOtpFormSchema } from "@/lib/schema/auth"
 
 type VerifyEmailFormProps = {
@@ -44,8 +45,9 @@ export function VerifyEmailForm({ email }: VerifyEmailFormProps) {
         return
       }
 
+      await queryClient.invalidateQueries({ queryKey: ["session"] })
       toast.success("Email verified.")
-      router.push("/")
+      router.push("/dashboard")
       router.refresh()
     },
   })

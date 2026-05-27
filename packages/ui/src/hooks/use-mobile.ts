@@ -1,19 +1,33 @@
-import * as React from "react"
+/**
+ * Spotting mobile viewport hook.
+ * Copyright (C) 2026 KK Jayakumar
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ */
 
-const MOBILE_BREAKPOINT = 768
+import { useEffect, useState } from "react"
 
-export function useIsMobile() {
-  const [isMobile, setIsMobile] = React.useState<boolean | undefined>(undefined)
+const MOBILE_MAX_WIDTH_PX = 767
 
-  React.useEffect(() => {
-    const mql = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT - 1}px)`)
-    const onChange = () => {
-      setIsMobile(window.innerWidth < MOBILE_BREAKPOINT)
-    }
-    mql.addEventListener("change", onChange)
-    setIsMobile(window.innerWidth < MOBILE_BREAKPOINT)
-    return () => mql.removeEventListener("change", onChange)
+function readIsMobileViewport(): boolean {
+  if (typeof window === "undefined") {
+    return false
+  }
+
+  return window.matchMedia(`(max-width: ${MOBILE_MAX_WIDTH_PX}px)`).matches
+}
+
+export function useIsMobile(): boolean {
+  const [isMobile, setIsMobile] = useState<boolean>(() => readIsMobileViewport())
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia(`(max-width: ${MOBILE_MAX_WIDTH_PX}px)`)
+
+    const sync = () => setIsMobile(mediaQuery.matches)
+    sync()
+
+    mediaQuery.addEventListener("change", sync)
+    return () => mediaQuery.removeEventListener("change", sync)
   }, [])
 
-  return !!isMobile
+  return isMobile
 }

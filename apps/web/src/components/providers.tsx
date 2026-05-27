@@ -6,7 +6,7 @@ import { TooltipProvider } from "@spotting/ui/components/ui/tooltip"
 import { QueryClientProvider } from "@tanstack/react-query"
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools"
 import { NuqsAdapter } from "nuqs/adapters/next/app"
-import { queryClient } from "@/utils/orpc"
+import { queryClient } from "@/lib/api"
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   return (

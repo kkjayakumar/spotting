@@ -1,31 +1,38 @@
+/**
+ * Spotting Postgres unique-constraint retry helper.
+ * Copyright (C) 2026 KK Jayakumar
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ */
+
 import { isErrorWithCode } from "../errors"
 
-const DEFAULT_MAX_ATTEMPTS = 3
-const POSTGRES_UNIQUE_VIOLATION_CODE = "23505"
+const PG_UNIQUE_VIOLATION = "23505"
+const DEFAULT_ATTEMPTS = 3
 
-interface RetryOnUniqueViolationOptions {
+export interface UniqueViolationRetryOptions {
   maxAttempts?: number
 }
 
 export function isPostgresUniqueViolationError(error: unknown): boolean {
-  return isErrorWithCode(error, POSTGRES_UNIQUE_VIOLATION_CODE)
+  return isErrorWithCode(error, PG_UNIQUE_VIOLATION)
 }
 
 export async function retryOnUniqueViolation<T>(
-  operation: () => Promise<T>,
-  options?: RetryOnUniqueViolationOptions
+  task: () => Promise<T>,
+  options?: UniqueViolationRetryOptions
 ): Promise<T> {
-  const maxAttempts = options?.maxAttempts ?? DEFAULT_MAX_ATTEMPTS
+  const attempts = options?.maxAttempts ?? DEFAULT_ATTEMPTS
 
-  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+  for (let tryIndex = 1; tryIndex <= attempts; tryIndex += 1) {
     try {
-      return await operation()
+      return await task()
     } catch (error) {
-      if (!isPostgresUniqueViolationError(error) || attempt === maxAttempts) {
+      const isLastTry = tryIndex === attempts
+      if (isLastTry || !isPostgresUniqueViolationError(error)) {
         throw error
       }
     }
   }
 
-  throw new Error("retryOnUniqueViolation exhausted attempts unexpectedly")
+  throw new Error("retryOnUniqueViolation: exhausted attempts without result")
 }

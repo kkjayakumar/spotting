@@ -1,10 +1,16 @@
 import type { Context } from "hono";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
+import {
+  captureBearerPattern,
+  isLegacyCapturePublicKey,
+  legacyCaptureKeysAllowedFromEnv,
+} from "./capture-keys";
 import type { CapturePublicKey } from "./prisma-exports";
 import { ReportVisibility } from "./prisma-exports";
 import { prisma } from "./db";
 import { attachmentTypeFromContentType } from "./report-artifacts";
+import { resolveReportGroupIdForCreate, serializeReportGroup } from "./report-groups";
 import { createPresignedUploadUrl, putObjectBuffer } from "./s3";
 import {
   apiError,
@@ -129,11 +135,19 @@ export async function authenticateCapturePublicKey(
   c: Context,
 ): Promise<CapturePublicKey> {
   const auth = c.req.header("authorization") ?? "";
-  const m = auth.match(/^Bearer\s+(crk_[a-zA-Z0-9_-]+)$/);
+  const allowLegacy = legacyCaptureKeysAllowedFromEnv();
+  const m = auth.match(captureBearerPattern({ allowLegacy }));
   if (!m) {
     throw apiError(401, "UNAUTHORIZED", "Missing or invalid capture public key");
   }
   const token = m[1];
+  if (!allowLegacy && isLegacyCapturePublicKey(token)) {
+    throw apiError(
+      401,
+      "UNAUTHORIZED",
+      "Legacy crk_ capture keys are no longer accepted. Migrate to spk_ keys.",
+    );
+  }
   const key = await prisma.capturePublicKey.findFirst({
     where: { token, revokedAt: null },
   });
@@ -191,6 +205,18 @@ export function createCapturePublicRouter() {
     }),
   );
 
+  r.get("/report-groups", async (c) => {
+    const key = await requireCapturePublicKey(c);
+    const groups = await prisma.reportGroup.findMany({
+      where: { organizationId: key.organizationId },
+      orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+      include: { _count: { select: { reports: true } } },
+    });
+    return c.json({
+      groups: groups.map((group) => serializeReportGroup(group)),
+    });
+  });
+
   r.post("/reports", async (c) => {
     const key = await authenticateCapturePublicKey(c);
     const body = await readJsonBody<{
@@ -198,11 +224,17 @@ export function createCapturePublicRouter() {
       description?: string;
       pageUrl?: string;
       metadataJson?: unknown;
+      groupId?: string | null;
     }>(c);
     const title = requireNonEmptyString(body.title, "title");
     const description = optionalTrimmedString(body.description);
     const pageUrl = optionalTrimmedString(body.pageUrl);
     assertCaptureOriginAllowed(key, c, pageUrl ?? undefined);
+    const groupId = await resolveReportGroupIdForCreate(
+      key.organizationId,
+      null,
+      body.groupId,
+    );
     const report = await prisma.report.create({
       data: {
         organizationId: key.organizationId,
@@ -215,6 +247,7 @@ export function createCapturePublicRouter() {
             ? undefined
             : (body.metadataJson as object),
         visibility: ReportVisibility.private,
+        ...(groupId !== undefined && groupId !== null ? { groupId } : {}),
       },
     });
     return c.json(report, 201);

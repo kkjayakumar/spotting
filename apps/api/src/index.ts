@@ -2,6 +2,30 @@ import { loadApiEnv } from "./load-env";
 
 loadApiEnv();
 
+import { existsSync } from "node:fs";
+import * as Sentry from "@sentry/node";
+
+const isDocker = existsSync("/.dockerenv");
+const defaultDsn = isDocker
+  ? "http://aegisops@host.docker.internal:5000/1"
+  : "http://aegisops@localhost:5000/1";
+
+
+Sentry.init({
+  dsn: process.env.SENTRY_DSN || defaultDsn,
+  tracesSampleRate: 1.0,
+  debug: false,
+
+  initialScope: {
+    tags: {
+      container_name: "spotting-api"
+    }
+  }
+});
+
+
+
+import { serve } from "@hono/node-server";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { HTTPException } from "hono/http-exception";
@@ -52,7 +76,14 @@ app.use("*", async (c, next) => {
   const start = performance.now();
   const requestId = c.req.header("x-request-id") ?? crypto.randomUUID();
   c.header("x-request-id", requestId);
-  await next();
+
+  await Sentry.startSpan({
+    op: "http.server",
+    name: `${c.req.method} ${c.req.path}`,
+  }, async () => {
+    await next();
+  });
+
   logger.info("request_complete", {
     requestId,
     method: c.req.method,
@@ -65,6 +96,11 @@ app.use("*", async (c, next) => {
 app.get("/healthz", (c) => {
   return c.json({ status: "ok", service: "api" });
 });
+
+app.get("/debug-error", (c) => {
+  throw new Error("AegisOps Crash Test Exception!");
+});
+
 
 app.get("/readyz", (c) => {
   return prisma.$queryRaw`SELECT 1`
@@ -102,6 +138,10 @@ app.notFound((c) => {
 });
 
 app.onError((error, c) => {
+  if (!(error instanceof HTTPException) || error.status >= 500) {
+    Sentry.captureException(error);
+  }
+
   if (error instanceof HTTPException) {
     const code =
       (error.cause as { code?: string } | undefined)?.code ??
@@ -132,7 +172,9 @@ app.onError((error, c) => {
   );
 });
 
-export default {
-  port,
+serve({
   fetch: app.fetch,
-};
+  port,
+});
+
+logger.info("service_listening", { port });

@@ -3,7 +3,7 @@ import type { Metadata } from "next"
 import { headers } from "next/headers"
 import type { ReactNode } from "react"
 
-import { fetchApiWithRequestHeaders } from "@/utils/orpc"
+import { fetchApiWithRequestHeaders } from "@/lib/api"
 
 interface BugReportLayoutProps {
   children: ReactNode
@@ -33,11 +33,15 @@ export async function generateMetadata({
       title: report.title.trim(),
     }
   } catch (error) {
-    reportNonFatalError(
-      `Failed to generate metadata for bug report ${id}`,
-      error
-    )
-    return { title: "Bug Report" }
+    const message = error instanceof Error ? error.message : String(error);
+    // Private reports 404 in metadata when the session cookie is not on this request yet.
+    if (!message.includes("Report not found")) {
+      reportNonFatalError(
+        `Failed to generate metadata for bug report ${id}`,
+        error,
+      );
+    }
+    return { title: "Bug Report" };
   }
 }
 

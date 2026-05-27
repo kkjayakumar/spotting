@@ -3,7 +3,7 @@
 import { useMutation } from "@tanstack/react-query"
 import { toast } from "sonner"
 
-import { client, queryClient } from "@/utils/orpc"
+import { client, queryClient } from "@/lib/api"
 
 export function usePublicKeyActions(organizationId: string) {
   const createMutation = useMutation({

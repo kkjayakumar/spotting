@@ -1,20 +1,15 @@
 /// <reference types="chrome" />
 
+import {
+  capturePublicKeyValidationMessage,
+  isCapturePublicKey,
+} from "@spotting/shared/constants/capture-keys";
+
 const API_KEY = "spottingApiBase";
 const PUBLIC_KEY = "spottingPublicKey";
 const DASHBOARD_KEY = "spottingDashboardUrl";
 
-/** Legacy Crikket extension keys — migrated on read. */
-const LEGACY_API_KEYS = [
-  "crikketApiBase",
-  "crikket_api_base",
-  "crikketServerUrl",
-] as const;
-const LEGACY_PUBLIC_KEYS = [
-  "crikketPublicKey",
-  "crikket_public_key",
-  "crikketKey",
-] as const;
+const EXTENSION_KEY_POLICY = { allowLegacy: false } as const;
 
 export type ExtensionSettings = {
   apiBaseUrl: string;
@@ -23,10 +18,9 @@ export type ExtensionSettings = {
 };
 
 const DEFAULT_API = "http://localhost:3000";
-const DEFAULT_DASHBOARD = "http://localhost:3003";
+const DEFAULT_DASHBOARD = "http://localhost:3001";
 
-/** Next.js dev server port in this monorepo — not the Hono API. */
-const DASHBOARD_DEV_PORT = "3003";
+const DASHBOARD_DEV_PORT = "3001";
 const API_DEV_PORT = "3000";
 
 export type NormalizeApiResult = {
@@ -34,7 +28,6 @@ export type NormalizeApiResult = {
   corrected: boolean;
 };
 
-/** Rewrite common dashboard URL mistakes to the Hono API base. */
 export function normalizeApiBaseUrl(url: string): NormalizeApiResult {
   const trimmed = url.trim();
   if (!trimmed) {
@@ -53,30 +46,10 @@ export function normalizeApiBaseUrl(url: string): NormalizeApiResult {
   }
 }
 
-function pickString(
-  values: Record<string, unknown>,
-  keys: readonly string[],
-): string {
-  for (const key of keys) {
-    const value = values[key];
-    if (typeof value === "string" && value.trim().length > 0) {
-      return value.trim();
-    }
-  }
-  return "";
-}
-
 async function readArea(
   area: chrome.storage.StorageArea,
 ): Promise<Record<string, unknown>> {
-  const keys = [
-    API_KEY,
-    PUBLIC_KEY,
-    DASHBOARD_KEY,
-    ...LEGACY_API_KEYS,
-    ...LEGACY_PUBLIC_KEYS,
-  ];
-  return area.get(keys);
+  return area.get([API_KEY, PUBLIC_KEY, DASHBOARD_KEY]);
 }
 
 export async function loadExtensionSettings(): Promise<ExtensionSettings> {
@@ -87,11 +60,14 @@ export async function loadExtensionSettings(): Promise<ExtensionSettings> {
 
   const merged = { ...localValues, ...syncValues };
   const rawApi =
-    pickString(merged, [API_KEY, ...LEGACY_API_KEYS]) || DEFAULT_API;
+    typeof merged[API_KEY] === "string" ? merged[API_KEY].trim() : DEFAULT_API;
   const { url: apiBaseUrl, corrected } = normalizeApiBaseUrl(rawApi);
-  const publicKey = pickString(merged, [PUBLIC_KEY, ...LEGACY_PUBLIC_KEYS]);
+  const publicKey =
+    typeof merged[PUBLIC_KEY] === "string" ? merged[PUBLIC_KEY].trim() : "";
   const dashboardUrl =
-    pickString(merged, [DASHBOARD_KEY]) || DEFAULT_DASHBOARD;
+    typeof merged[DASHBOARD_KEY] === "string" && merged[DASHBOARD_KEY].trim()
+      ? merged[DASHBOARD_KEY].trim()
+      : DEFAULT_DASHBOARD;
 
   if (corrected && apiBaseUrl !== rawApi) {
     await saveExtensionSettings({ apiBaseUrl, publicKey, dashboardUrl }).catch(
@@ -104,7 +80,7 @@ export async function loadExtensionSettings(): Promise<ExtensionSettings> {
 
 export function isExtensionConfigured(settings: ExtensionSettings): boolean {
   return (
-    settings.publicKey.startsWith("crk_") &&
+    isCapturePublicKey(settings.publicKey, EXTENSION_KEY_POLICY) &&
     validateApiBaseUrl(settings.apiBaseUrl) === null
   );
 }
@@ -147,8 +123,8 @@ export function validateApiBaseUrl(url: string): string | null {
 }
 
 export function validatePublicKey(key: string): string | null {
-  if (!key.startsWith("crk_")) {
-    return "Public key must start with crk_";
+  if (!isCapturePublicKey(key.trim(), EXTENSION_KEY_POLICY)) {
+    return capturePublicKeyValidationMessage(EXTENSION_KEY_POLICY);
   }
   return null;
 }

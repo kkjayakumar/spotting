@@ -68,7 +68,7 @@ function formatFetchFailure(url: string, error: string): string {
     return (
       "Cannot reach the Spotting API at " +
       url +
-      ". Start it with: bun run dev:api (from the spotting repo). " +
+      ". Start it with: npm run dev:api (from the spotting repo). " +
       "If you use a remote/staging API, set that HTTPS URL in extension settings."
     );
   }
