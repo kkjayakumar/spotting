@@ -1,0 +1,122 @@
+# Production stack using pre-built images from GitHub Container Registry (GHCR).
+#
+# Required in .env:
+#   GHCR_IMAGE_PREFIX=ghcr.io/<github-owner>   (lowercase)
+#   SPOTTING_IMAGE_TAG=v1.0.0                    (release tag from GitHub)
+#
+# Usage:
+#   docker login ghcr.io   # if images are private
+#   docker compose -f docker-compose.ghcr.yml --env-file .env pull
+#   docker compose -f docker-compose.ghcr.yml --env-file .env up -d
+#
+# See docs/deployment/ec2-ghcr-hosting.md
+
+services:
+  spotting-postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-spotting}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    volumes:
+      - spotting_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7
+    restart: unless-stopped
+    volumes:
+      - spotting_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    image: ${GHCR_IMAGE_PREFIX}/spotting-api:${SPOTTING_IMAGE_TAG}
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "${DOCKER_BIND_HOST:-127.0.0.1}:${API_PORT:-3000}:3000"
+    environment:
+      NODE_ENV: production
+      API_PORT: "3000"
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@spotting-postgres:5432/${POSTGRES_DB:-spotting}?schema=public
+      REDIS_URL: redis://redis:6379
+      S3_AUTO_CREATE_BUCKET: "false"
+      SPOTTING_AUTH_URL: ${SPOTTING_AUTH_URL:-http://127.0.0.1:3000}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://127.0.0.1:3001}
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3000/healthz').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 90s
+    depends_on:
+      spotting-postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  worker:
+    image: ${GHCR_IMAGE_PREFIX}/spotting-worker:${SPOTTING_IMAGE_TAG}
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@spotting-postgres:5432/${POSTGRES_DB:-spotting}?schema=public
+    depends_on:
+      spotting-postgres:
+        condition: service_healthy
+      api:
+        condition: service_healthy
+
+  web:
+    image: ${GHCR_IMAGE_PREFIX}/spotting-web:${SPOTTING_IMAGE_TAG}
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "${DOCKER_BIND_HOST:-127.0.0.1}:${WEB_PORT:-3001}:3001"
+    environment:
+      NODE_ENV: production
+      PORT: "3001"
+      HOSTNAME: 0.0.0.0
+      SPOTTING_API_INTERNAL_URL: http://api:3000
+      SPOTTING_EXTENSION_DIST: /app/apps/extension/dist
+      NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-http://127.0.0.1:3001}
+      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://127.0.0.1:3001}
+      NEXT_PUBLIC_SERVER_URL: ${NEXT_PUBLIC_SERVER_URL:-http://127.0.0.1:3000}
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3001').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 8
+      start_period: 45s
+    depends_on:
+      api:
+        condition: service_healthy
+
+volumes:
+  spotting_postgres_data:
+  spotting_redis_data:

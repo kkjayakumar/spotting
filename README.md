@@ -26,8 +26,11 @@ Open-source bug reporting platform with screen recording, console/network captur
 | `packages/ui` | Shared UI components |
 | `packages/shared` | Shared config and types |
 | `infra/docker` | Local dev infrastructure (Postgres, Redis, MinIO) |
-| `docker-compose.yml` | Production stack (Postgres, Redis, API, worker, web) |
-| `scripts/install-ubuntu.sh` | One-command Ubuntu server installer |
+| `docker-compose.yml` | Production stack (build images on the server) |
+| `docker-compose.ghcr.yml` | Production stack (pull images from GHCR) |
+| `scripts/install-ubuntu.sh` | Ubuntu installer (build from source) |
+| `scripts/install-ubuntu-ghcr.sh` | Ubuntu installer (GHCR images) |
+| `docs/deployment/ec2-ghcr-hosting.md` | EC2 + GHCR deployment guide |
 
 ---
 
@@ -105,39 +108,99 @@ See [docs/capture-embed.md](./docs/capture-embed.md) for SDK embed and public ke
 
 ---
 
-## Production — Ubuntu 26 server
+## Production — Ubuntu EC2 (GHCR images)
 
-Deploy with Docker, nginx, and Let's Encrypt SSL. After cloning the repo you only need to create `.env` and run the install script.
+Pushing a `v*` tag runs [.github/workflows/release.yml](.github/workflows/release.yml): tests, GitHub Release, then **container images to GHCR**:
+
+| Image | Example |
+|-------|---------|
+| API | `ghcr.io/<github-owner>/spotting-api:v1.0.0` |
+| Web | `ghcr.io/<github-owner>/spotting-web:v1.0.0` |
+| Worker | `ghcr.io/<github-owner>/spotting-worker:v1.0.0` |
+
+Use your GitHub username/org in **lowercase** for `<github-owner>`.
 
 ### Prerequisites
 
-- Fresh **Ubuntu 26.04** VPS (2 GB+ RAM recommended)
-- Two DNS **A records** pointing to the server IP:
-  - `spotting.yourdomain.com` → web dashboard
-  - `api-spotting.yourdomain.com` → API
-- AWS S3 bucket + IAM credentials for uploads
-- AWS SES SMTP credentials for verification emails
+- Ubuntu 22.04 / 24.04 EC2 (2 GB+ RAM)
+- DNS **A records**: `spotting.yourdomain.com`, `api-spotting.yourdomain.com` → EC2 IP
+- AWS S3 + SES credentials
 - Ports **22**, **80**, **443** open
 
-### Quick install (recommended)
+### 1. Publish images (GitHub)
 
 ```bash
-# 1. Clone
-sudo mkdir -p /opt/spotting
-sudo chown "$USER":"$USER" /opt/spotting
-git clone https://github.com/your-org/spotting.git /opt/spotting
-cd /opt/spotting
-
-# 2. Configure (only step that requires editing)
-cp .env.example .env
-nano .env
-
-# 3. Install everything
-chmod +x scripts/install-ubuntu.sh
-sudo ./scripts/install-ubuntu.sh
+git tag v1.0.0
+git push origin v1.0.0
 ```
 
-The script installs Docker, builds containers, applies the DB schema, configures nginx, and obtains SSL certificates.
+Wait for the **release** workflow to finish (Actions tab). Images appear under the repo **Packages** tab.
+
+### 2. Fetch and run on EC2
+
+```bash
+# Install git, clone deploy files (compose + scripts)
+sudo apt-get update && sudo apt-get install -y git
+sudo mkdir -p /opt/spotting && sudo chown "$USER":"$USER" /opt/spotting
+git clone https://github.com/your-org/spotting.git /opt/spotting
+cd /opt/spotting
+git checkout v1.0.0
+
+# Configure environment (see .env.example)
+cp .env.example .env
+nano .env
+```
+
+Add these two lines to `.env` (plus domains, secrets from `.env.example`):
+
+```bash
+GHCR_IMAGE_PREFIX=ghcr.io/your-github-owner
+SPOTTING_IMAGE_TAG=v1.0.0
+```
+
+**Private GHCR packages** — log in before pull:
+
+```bash
+echo "YOUR_GITHUB_PAT" | docker login ghcr.io -u YOUR_GITHUB_USERNAME --password-stdin
+```
+
+**One-command install** (Docker, pull images, nginx, SSL):
+
+```bash
+chmod +x scripts/install-ubuntu-ghcr.sh
+sudo ./scripts/install-ubuntu-ghcr.sh
+```
+
+**Or pull and start manually:**
+
+```bash
+# Install Docker if needed: https://docs.docker.com/engine/install/ubuntu/
+docker compose -f docker-compose.ghcr.yml --env-file .env pull
+docker compose -f docker-compose.ghcr.yml --env-file .env up -d
+
+curl http://127.0.0.1:3000/healthz
+curl -I http://127.0.0.1:3001
+```
+
+Then configure nginx + Let's Encrypt (see [manual steps](#manual-step-by-step-ubuntu-26) below) or use the install script above.
+
+Upgrade to a new release:
+
+```bash
+cd /opt/spotting && git fetch --tags && git checkout v1.1.0
+# Update SPOTTING_IMAGE_TAG=v1.1.0 in .env
+docker compose -f docker-compose.ghcr.yml --env-file .env pull
+docker compose -f docker-compose.ghcr.yml --env-file .env up -d
+```
+
+Full env variable list and troubleshooting: [docs/deployment/ec2-ghcr-hosting.md](docs/deployment/ec2-ghcr-hosting.md).
+
+### Build on server instead of GHCR
+
+```bash
+chmod +x scripts/install-ubuntu.sh
+sudo ./scripts/install-ubuntu.sh   # uses docker-compose.yml and builds locally
+```
 
 ---
 
@@ -179,27 +242,38 @@ cp .env.example .env
 nano .env
 ```
 
-**Required `.env` values** (see `.env.example` for full list):
+**Required `.env` variable names** (values in [`.env.example`](.env.example); GHCR deploy also needs `GHCR_IMAGE_PREFIX` and `SPOTTING_IMAGE_TAG`):
+
+| Category | Variables |
+|----------|-----------|
+| Public URLs | `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_APP_URL`, `NEXT_PUBLIC_SERVER_URL`, `CORS_ORIGINS`, `SPOTTING_AUTH_URL` |
+| TLS (install script) | `CERTBOT_EMAIL` |
+| Postgres | `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD` |
+| Auth | `SPOTTING_AUTH_SECRET` |
+| S3 | `S3_REGION`, `S3_BUCKET`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` |
+| Email (SES) | `SMTP_REGION`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_FROM` |
+| Host ports | `DOCKER_BIND_HOST`, `WEB_PORT`, `API_PORT` |
+| GHCR only | `GHCR_IMAGE_PREFIX`, `SPOTTING_IMAGE_TAG` |
+
+`DATABASE_URL` in `.env.example` is for **local development**; production Docker Compose sets it for API/worker automatically.
+
+Example snippet:
 
 ```bash
-# Domains (must match DNS)
 NEXT_PUBLIC_SITE_URL=https://spotting.yourdomain.com
 NEXT_PUBLIC_APP_URL=https://spotting.yourdomain.com
 NEXT_PUBLIC_SERVER_URL=https://api-spotting.yourdomain.com
 CORS_ORIGINS=https://spotting.yourdomain.com
 CERTBOT_EMAIL=admin@yourdomain.com
-
-# Secrets
 POSTGRES_PASSWORD=<long-random-password>
 SPOTTING_AUTH_SECRET=$(openssl rand -hex 32)
 SPOTTING_AUTH_URL=https://api-spotting.yourdomain.com
-
-# AWS S3 + SES
 S3_REGION=ap-south-1
 S3_BUCKET=your-bucket
 AWS_ACCESS_KEY_ID=...
 AWS_SECRET_ACCESS_KEY=...
 SMTP_REGION=ap-south-1
+SMTP_PORT=587
 SMTP_USERNAME=...
 SMTP_PASSWORD=...
 SMTP_FROM=Spotting <noreply@yourdomain.com>
