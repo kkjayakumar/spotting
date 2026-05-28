@@ -26,6 +26,12 @@ export default async function globalSetup() {
   }
 
   try {
+    execSync("npm run db:generate -w @spotting/api", {
+      cwd: repoRoot,
+      stdio: "inherit",
+      env: e2eProcessEnv(),
+    });
+
     try {
       execSync("npm run db:push:schema-only -w @spotting/api", {
         cwd: repoRoot,

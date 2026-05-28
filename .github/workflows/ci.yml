@@ -122,6 +122,9 @@ jobs:
         if: steps.cache-playwright.outputs.cache-hit == 'true'
         run: npx playwright install chromium
 
+      - name: Generate Prisma client
+        run: npm run db:generate
+
       - name: Run Playwright Tests
         run: npm run test:e2e
 
