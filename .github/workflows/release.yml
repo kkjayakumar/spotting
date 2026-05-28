@@ -87,6 +87,11 @@ jobs:
           NEXT_PUBLIC_GOOGLE_AUTH_ENABLED: "false"
           SPOTTING_API_INTERNAL_URL: http://127.0.0.1:3000
           CORS_ORIGINS: http://localhost:3003
+          SPOTTING_AUTH_SECRET: ci-e2e-spotting-auth-secret-minimum-32-chars
+          SPOTTING_AUTH_URL: http://localhost:3000
+          SPOTTING_ACCEPT_LEGACY_CRK_KEYS: "true"
+          PLAYWRIGHT_REUSE_SERVER: "false"
+          API_PORT: "3000"
         run: npm run test:e2e
 
       - name: Create GitHub Release

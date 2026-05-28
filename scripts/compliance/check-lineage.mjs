@@ -17,9 +17,11 @@ import { readFileSync, existsSync, readdirSync, statSync } from "node:fs";
 import { join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
+import { loadOptionalRepoEnv } from "../load-dotenv.mjs";
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
 const REPO_ROOT = join(__dirname, "..", "..");
+loadOptionalRepoEnv(REPO_ROOT);
 const BASELINE_PATH = join(REPO_ROOT, "docs", "provenance", "phase0-baseline.json");
 const MAPPINGS_PATH = join(__dirname, "path-mappings.json");
 

@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "node --env-file=../../.env --env-file=.env --watch --import tsx src/index.ts",
+    "dev": "node --watch --import tsx src/index.ts",
     "build": "tsc -p tsconfig.json",
     "start": "node --import tsx src/index.ts",
     "lint": "tsc -p tsconfig.json --noEmit",
@@ -12,8 +12,8 @@
     "db:push": "prisma db push",
     "db:push:schema-only": "prisma db push --skip-generate",
     "test": "vitest run src",
-    "e2e:seed": "node --env-file=../../.env --env-file=.env --import tsx scripts/e2e-seed.ts",
-    "migrate:capture-keys": "node --env-file=../../.env --env-file=.env --import tsx scripts/migrate-capture-keys.ts"
+    "e2e:seed": "node --import tsx scripts/e2e-seed.ts",
+    "migrate:capture-keys": "node --import tsx scripts/migrate-capture-keys.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1000.0",

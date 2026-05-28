@@ -12,6 +12,11 @@ export const E2E_ENV = {
   CORS_ORIGINS: "http://localhost:3003",
   API_PORT: "3000",
   SPOTTING_ACCEPT_LEGACY_CRK_KEYS: "true",
+  SPOTTING_AUTH_SECRET:
+    process.env.SPOTTING_AUTH_SECRET ??
+    "ci-e2e-spotting-auth-secret-minimum-32-chars",
+  SPOTTING_AUTH_URL:
+    process.env.SPOTTING_AUTH_URL ?? "http://localhost:3000",
 } as const;
 
 /** Reuse dev servers locally by default; CI and prelaunch pass PLAYWRIGHT_REUSE_SERVER=false. */
