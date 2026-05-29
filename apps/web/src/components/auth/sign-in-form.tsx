@@ -23,7 +23,7 @@ export function SignInForm() {
   const [emailQuery] = useQueryState("email", parseAsString.withDefault(""))
   const [callbackUrlQuery] = useQueryState(
     "callbackURL",
-    parseAsString.withDefault(env.NEXT_PUBLIC_APP_URL)
+    parseAsString.withDefault("/dashboard")
   )
   const { data: session, isPending } = authClient.useSession()
   const [isSocialSignInPending, setIsSocialSignInPending] = useState(false)
@@ -46,16 +46,21 @@ export function SignInForm() {
   const redirectPath = useMemo(() => {
     try {
       const appUrl = new URL(env.NEXT_PUBLIC_APP_URL)
-      const parsed = new URL(callbackURL)
+      const parsed = new URL(callbackUrlQuery, appUrl)
+
       if (parsed.origin !== appUrl.origin) {
         return "/dashboard"
       }
+
       const path = `${parsed.pathname}${parsed.search}${parsed.hash}`
-      return path.length > 0 ? path : "/dashboard"
+      if (path === "/" || path === "") {
+        return "/dashboard"
+      }
+      return path
     } catch {
       return "/dashboard"
     }
-  }, [callbackURL])
+  }, [callbackUrlQuery])
 
   const form = useForm({
     defaultValues: {
