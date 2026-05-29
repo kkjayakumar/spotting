@@ -14,28 +14,56 @@ function readCookieToken(cookieString: string): string | null {
   }
 }
 
-function persistSessionToken(token: string): void {
+async function syncSessionCookie(token: string): Promise<void> {
+  try {
+    await fetch("/api/auth/session", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token }),
+      credentials: "include",
+    });
+  } catch {
+    /* SSR may still use non-HttpOnly fallback cookie below */
+  }
+}
+
+async function persistSessionToken(token: string): Promise<void> {
   try {
     localStorage.setItem("spotting_token", token);
   } catch {
     /* ignore */
   }
-  const secure =
-    typeof window !== "undefined" && window.location.protocol === "https:"
-      ? "; Secure"
-      : "";
-  document.cookie = `spotting_token=${encodeURIComponent(token)}; path=/; max-age=604800; SameSite=Lax${secure}`;
+
+  await syncSessionCookie(token);
+
+  if (typeof document !== "undefined") {
+    const secure =
+      window.location.protocol === "https:" ? "; Secure" : "";
+    document.cookie = `spotting_token=${token}; path=/; max-age=604800; SameSite=Lax${secure}`;
+  }
 }
 
-function clearSessionToken(): void {
+async function clearSessionToken(): Promise<void> {
   try {
     localStorage.removeItem("spotting_token");
     localStorage.removeItem("spotting_active_org");
   } catch {
     /* ignore */
   }
-  document.cookie =
-    "spotting_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+
+  try {
+    await fetch("/api/auth/session", {
+      method: "DELETE",
+      credentials: "include",
+    });
+  } catch {
+    /* ignore */
+  }
+
+  if (typeof document !== "undefined") {
+    document.cookie =
+      "spotting_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+  }
 }
 
 async function fetchApi(path: string, options: any = {}) {
@@ -144,7 +172,7 @@ export const spottingAuthClient = {
         body: JSON.stringify({ email, password }),
       });
       if (res.data?.sessionToken) {
-        persistSessionToken(res.data.sessionToken);
+        await persistSessionToken(res.data.sessionToken);
       }
       return res;
     },
@@ -159,7 +187,7 @@ export const spottingAuthClient = {
         body: JSON.stringify(payload),
       });
       if (res.data?.sessionToken) {
-        persistSessionToken(res.data.sessionToken);
+        await persistSessionToken(res.data.sessionToken);
       }
       return res;
     },
@@ -169,7 +197,7 @@ export const spottingAuthClient = {
       method: "POST",
       ...(opts?.fetchOptions ?? {}),
     });
-    clearSessionToken();
+    await clearSessionToken();
     return { data: { ok: true }, error: null };
   },
   emailOtp: {

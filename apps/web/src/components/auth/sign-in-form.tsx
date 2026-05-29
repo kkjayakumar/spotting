@@ -88,16 +88,28 @@ export function SignInForm() {
 
       await queryClient.invalidateQueries({ queryKey: ["session"] })
       toast.success("Signed in successfully.")
-      router.refresh()
-      router.push(redirectPath as never)
+      window.location.assign(redirectPath)
     },
   })
 
   useEffect(() => {
-    if (session) {
-      router.replace(redirectPath as never)
+    if (!session) return
+
+    const token = localStorage.getItem("spotting_token")
+    if (token) {
+      void fetch("/api/auth/session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token }),
+        credentials: "include",
+      }).finally(() => {
+        window.location.assign(redirectPath)
+      })
+      return
     }
-  }, [redirectPath, router, session])
+
+    window.location.assign(redirectPath)
+  }, [redirectPath, session])
 
   const handleGoogleSignIn = async () => {
     setIsSocialSignInPending(true)
