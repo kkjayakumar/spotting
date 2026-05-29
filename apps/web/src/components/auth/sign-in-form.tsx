@@ -9,17 +9,16 @@ import { Field, FieldError, FieldLabel } from "@spotting/ui/components/ui/field"
 import { Input } from "@spotting/ui/components/ui/input"
 import { useForm } from "@tanstack/react-form"
 import Link from "next/link"
-import { useRouter } from "nextjs-toploader/app"
 import { parseAsString, useQueryState } from "nuqs"
-import { useEffect, useMemo, useState } from "react"
+import { useMemo, useState } from "react"
 import { toast } from "sonner"
 import { AuthShell } from "@/components/auth/auth-shell"
 import { getAuthErrorMessage } from "@/lib/auth"
+import { finishAuthRedirect } from "@/lib/auth-redirect"
 import { queryClient } from "@/lib/api"
 import { loginFormSchema } from "@/lib/schema/auth"
 
 export function SignInForm() {
-  const router = useRouter()
   const [emailQuery] = useQueryState("email", parseAsString.withDefault(""))
   const [callbackUrlQuery] = useQueryState(
     "callbackURL",
@@ -27,6 +26,7 @@ export function SignInForm() {
   )
   const { data: session, isPending } = authClient.useSession()
   const [isSocialSignInPending, setIsSocialSignInPending] = useState(false)
+  const [isContinuePending, setIsContinuePending] = useState(false)
   const isGoogleAuthEnabled = env.NEXT_PUBLIC_GOOGLE_AUTH_ENABLED
   const callbackURL = useMemo(() => {
     try {
@@ -93,28 +93,18 @@ export function SignInForm() {
 
       await queryClient.invalidateQueries({ queryKey: ["session"] })
       toast.success("Signed in successfully.")
-      window.location.assign(redirectPath)
+      await finishAuthRedirect(redirectPath)
     },
   })
 
-  useEffect(() => {
-    if (!session) return
-
-    const token = localStorage.getItem("spotting_token")
-    if (token) {
-      void fetch("/api/auth/session", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token }),
-        credentials: "include",
-      }).finally(() => {
-        window.location.assign(redirectPath)
-      })
-      return
+  const handleContinue = async () => {
+    setIsContinuePending(true)
+    try {
+      await finishAuthRedirect(redirectPath)
+    } finally {
+      setIsContinuePending(false)
     }
-
-    window.location.assign(redirectPath)
-  }, [redirectPath, session])
+  }
 
   const handleGoogleSignIn = async () => {
     setIsSocialSignInPending(true)
@@ -148,7 +138,33 @@ export function SignInForm() {
   }
 
   if (session) {
-    return null
+    return (
+      <AuthShell
+        description="You are already signed in. Continue to your workspace or sign out to use another account."
+        title="Already signed in"
+      >
+        <Button
+          className="h-12 w-full font-bold text-lg"
+          disabled={isContinuePending}
+          onClick={() => void handleContinue()}
+          type="button"
+        >
+          {isContinuePending ? "Opening dashboard…" : "Continue to dashboard"}
+        </Button>
+        <Button
+          className="h-12 w-full"
+          disabled={isContinuePending}
+          onClick={async () => {
+            await authClient.signOut()
+            window.location.assign("/login")
+          }}
+          type="button"
+          variant="outline"
+        >
+          Sign out
+        </Button>
+      </AuthShell>
+    )
   }
 
   return (

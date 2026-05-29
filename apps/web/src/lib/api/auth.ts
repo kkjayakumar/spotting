@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { API_BASE_URL } from "@/lib/api-base-url";
+import { finishAuthRedirect, syncSessionCookie } from "@/lib/auth-redirect";
 
 import { orgClient } from "./orgs";
 
@@ -14,20 +15,6 @@ function readCookieToken(cookieString: string): string | null {
   }
 }
 
-async function syncSessionCookie(token: string): Promise<boolean> {
-  try {
-    const response = await fetch("/api/auth/session", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token }),
-      credentials: "include",
-    });
-    return response.ok;
-  } catch {
-    return false;
-  }
-}
-
 async function persistSessionToken(token: string): Promise<void> {
   try {
     localStorage.setItem("spotting_token", token);
@@ -35,9 +22,10 @@ async function persistSessionToken(token: string): Promise<void> {
     /* ignore */
   }
 
-  await syncSessionCookie(token);
+  const synced = await syncSessionCookie(token);
 
-  if (typeof document !== "undefined") {
+  // Fallback readable cookie if the HttpOnly route failed (e.g. route not deployed yet).
+  if (!synced && typeof document !== "undefined") {
     const secure =
       window.location.protocol === "https:" ? "; Secure" : "";
     document.cookie = `spotting_token=${token}; path=/; max-age=604800; SameSite=Lax${secure}`;

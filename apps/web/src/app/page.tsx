@@ -4,10 +4,12 @@ import React, { useState } from "react"
 import Link from "next/link"
 import { SpiderWebBackground } from "@/components/spider-web-background"
 import { authClient } from "@/lib/auth-client"
+import { finishAuthRedirect } from "@/lib/auth-redirect"
 
 export default function LandingPage() {
   const { data: session, isPending } = authClient.useSession()
   const [isSignOutPending, setIsSignOutPending] = useState(false)
+  const [isDashboardPending, setIsDashboardPending] = useState(false)
 
   const handleSignOut = async () => {
     setIsSignOutPending(true)
@@ -33,12 +35,21 @@ export default function LandingPage() {
           <div className="flex flex-col gap-3">
             {session ? (
               <>
-                <Link 
-                  href="/dashboard" 
-                  className="bg-blue-600 hover:bg-blue-500 text-white text-center py-3 rounded-xl font-bold transition-all shadow-[0_0_20px_rgba(59,130,246,0.4)] hover:shadow-[0_0_30px_rgba(59,130,246,0.6)] active:scale-[0.98]"
+                <button
+                  type="button"
+                  disabled={isDashboardPending}
+                  onClick={async () => {
+                    setIsDashboardPending(true)
+                    try {
+                      await finishAuthRedirect("/dashboard")
+                    } finally {
+                      setIsDashboardPending(false)
+                    }
+                  }}
+                  className="bg-blue-600 hover:bg-blue-500 text-white text-center py-3 rounded-xl font-bold transition-all shadow-[0_0_20px_rgba(59,130,246,0.4)] hover:shadow-[0_0_30px_rgba(59,130,246,0.6)] active:scale-[0.98] disabled:opacity-50"
                 >
-                  Go to Dashboard
-                </Link>
+                  {isDashboardPending ? "Opening dashboard…" : "Go to Dashboard"}
+                </button>
                 <button 
                   onClick={handleSignOut}
                   disabled={isSignOutPending}
