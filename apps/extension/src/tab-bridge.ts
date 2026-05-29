@@ -1,5 +1,12 @@
 /// <reference types="chrome" />
 
+import {
+  hasScriptingApi,
+  scriptingExecuteScript,
+  tabsQuery,
+  tabsSendMessage,
+} from "./browser-api";
+
 export type TabMessageResult = {
   ok: boolean;
   error?: string;
@@ -18,7 +25,7 @@ export type ActiveTab = {
 };
 
 export async function getActiveTab(): Promise<ActiveTab | null> {
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  const [tab] = await tabsQuery({ active: true, currentWindow: true });
   if (!tab?.id) return null;
   return { id: tab.id, url: tab.url };
 }
@@ -30,6 +37,8 @@ export function restrictedPageMessage(url: string | undefined): string | null {
   if (
     url.startsWith("chrome://") ||
     url.startsWith("chrome-extension://") ||
+    url.startsWith("moz-extension://") ||
+    url.startsWith("safari-web-extension://") ||
     url.startsWith("edge://") ||
     url.startsWith("about:") ||
     url.startsWith("devtools://")
@@ -47,7 +56,7 @@ export function restrictedPageMessage(url: string | undefined): string | null {
 
 async function pingContentScript(tabId: number): Promise<boolean> {
   try {
-    const res = (await chrome.tabs.sendMessage(tabId, {
+    const res = (await tabsSendMessage(tabId, {
       type: "SPOTTING_PING",
     })) as { ok?: boolean };
     return res?.ok === true;
@@ -57,12 +66,17 @@ async function pingContentScript(tabId: number): Promise<boolean> {
 }
 
 async function injectContentScript(tabId: number): Promise<void> {
-  await chrome.scripting.executeScript({
+  if (!hasScriptingApi()) {
+    return;
+  }
+  const firstInjection: any = {
     target: { tabId },
     files: ["page-capture.js"],
+    // Page capture must run in MAIN world on all supported browsers.
     world: "MAIN",
-  });
-  await chrome.scripting.executeScript({
+  };
+  await scriptingExecuteScript(firstInjection);
+  await scriptingExecuteScript({
     target: { tabId },
     files: ["content.js"],
   });
@@ -98,7 +112,7 @@ export async function sendToActiveTab<T extends { type: string }>(
 
   try {
     await ensureContentScript(tab.id);
-    return (await chrome.tabs.sendMessage(tab.id, message)) as TabMessageResult;
+    return (await tabsSendMessage(tab.id, message)) as TabMessageResult;
   } catch (err) {
     if (err instanceof Error && err.message === "CONTENT_SCRIPT_UNAVAILABLE") {
       return {

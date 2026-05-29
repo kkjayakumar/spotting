@@ -114,3 +114,14 @@ Dashboard bug-report components in baseline → `features/reports/dashboard/*`.
 | **Spec** | docs/specs/shared-utilities.md |
 | **Attestation** | No Crikket source was used. |
 -->
+
+### `apps/extension/src/*`, `apps/extension/scripts/*` (browser support split)
+
+| Field | Value |
+|-------|-------|
+| **Author** | Spotting engineering |
+| **Date** | 2026-05-28 |
+| **Phase** | Extension parity / clean-room |
+| **Spec** | `docs/specs/extension-browser-support.md` |
+| **Attestation** | No Crikket source was opened or diffed during implementation. |
+| **Notes** | Added browser API compatibility layer, per-target manifest generation, packaging scripts, and Safari conversion path docs. |

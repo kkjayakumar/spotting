@@ -7,28 +7,23 @@ type TabCaptureConstraints = MediaTrackConstraints & {
   };
 };
 
+import {
+  hasRuntimeApi,
+  hasTabCaptureApi,
+  runtimeSendMessage,
+} from "./browser-api";
+
 export async function captureCurrentTabStream(): Promise<MediaStream> {
-  const streamId = await new Promise<string>((resolve, reject) => {
-    chrome.runtime.sendMessage(
-      { type: "SPOTTING_TAB_CAPTURE_STREAM_ID" },
-      (response: { ok?: boolean; streamId?: string; error?: string }) => {
-        if (chrome.runtime.lastError) {
-          reject(new Error(chrome.runtime.lastError.message));
-          return;
-        }
-        if (!response?.ok || !response.streamId) {
-          reject(
-            new Error(
-              response?.error ??
-                "Could not start tab capture for this page.",
-            ),
-          );
-          return;
-        }
-        resolve(response.streamId);
-      },
+  const response = await runtimeSendMessage<
+    { type: "SPOTTING_TAB_CAPTURE_STREAM_ID" },
+    { ok?: boolean; streamId?: string; error?: string }
+  >({ type: "SPOTTING_TAB_CAPTURE_STREAM_ID" });
+  if (!response?.ok || !response.streamId) {
+    throw new Error(
+      response?.error ?? "Could not start tab capture for this page.",
     );
-  });
+  }
+  const streamId = response.streamId;
 
   const video: TabCaptureConstraints = {
     mandatory: {
@@ -44,9 +39,5 @@ export async function captureCurrentTabStream(): Promise<MediaStream> {
 }
 
 export function isExtensionTabCaptureAvailable(): boolean {
-  return (
-    typeof chrome !== "undefined" &&
-    Boolean(chrome.runtime?.id) &&
-    typeof chrome.tabCapture?.getMediaStreamId === "function"
-  );
+  return hasRuntimeApi() && hasTabCaptureApi();
 }

@@ -21,6 +21,7 @@ async function installCapturePipelineImpl(): Promise<void> {
     }
   }
 
+  // Isolated-world patches only help when MAIN-world injection failed.
   if (!isPageCaptureActive()) {
     installNetworkInterceptor();
     installConsoleInterceptor();

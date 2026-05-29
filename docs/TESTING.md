@@ -40,3 +40,29 @@
 
 - Use **Node 22+** for E2E (matches CI). Node 20 works but AWS SDK logs a future deprecation warning.
 - `EPERM` on `query_engine-windows.dll` during `db push`: another process (often a running API) holds the Prisma engine file. Stop the API or use `npm run db:push:schema-only -w @spotting/api` (E2E global setup tries this first).
+
+## Extension smoke matrix
+
+Run these build checks:
+
+- `npm run check-types -w @spotting/extension`
+- `npm run build:chrome -w @spotting/extension`
+- `npm run build:firefox -w @spotting/extension`
+- `npm run build:safari -w @spotting/extension`
+- `npm run package:all -w @spotting/extension`
+
+Manual smoke checks per browser (Chrome, Firefox, Safari):
+
+1. Install build output from `apps/extension/dist-targets/<target>`.
+2. Open popup and save API URL, dashboard URL, and public key.
+3. On an `https://` page:
+   - Trigger screenshot capture.
+   - Start/stop recording.
+   - Submit report with title.
+4. Confirm report appears in dashboard and media attachments load.
+
+Browser-specific notes:
+
+- Chrome uses extension `tabCapture` for tab recording.
+- Firefox and Safari use fallback recording flow (no `tabCapture` permission).
+- Safari store distribution requires macOS conversion/signing: `docs/extensions/safari-release-checklist.md`.

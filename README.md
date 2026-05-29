@@ -1,6 +1,6 @@
 # Spotting
 
-Open-source bug reporting platform with screen recording, console/network capture, and a Chrome extension. Built for QA teams and product engineering workflows.
+Open-source bug reporting platform with screen recording, console/network capture, and browser extensions. Built for QA teams and product engineering workflows.
 
 **License:** Licensed under the GNU Affero General Public License version 3 (AGPL-3.0) under KK Jayakumar. See [LICENSE](LICENSE) for details.
 
@@ -12,7 +12,7 @@ Open-source bug reporting platform with screen recording, console/network captur
 - **API** — Hono + PostgreSQL + Prisma, presigned S3 uploads, email verification
 - **Worker** — background maintenance (expired invites, upload sessions)
 - **Capture SDK** — embeddable browser widget (`packages/sdk-js`)
-- **Chrome extension** — record and submit from any site (`apps/extension`)
+- **Browser extensions** — Chrome, Firefox, Safari-compatible capture/submit flow (`apps/extension`)
 
 ## Repository layout
 
@@ -21,7 +21,7 @@ Open-source bug reporting platform with screen recording, console/network captur
 | `apps/web` | Next.js dashboard |
 | `apps/api` | Hono REST API |
 | `apps/worker` | Background worker |
-| `apps/extension` | Chrome MV3 extension |
+| `apps/extension` | Multi-browser extension (Chrome, Firefox, Safari packaging) |
 | `packages/sdk-js` | Browser capture SDK |
 | `packages/ui` | Shared UI components |
 | `packages/shared` | Shared config and types |
@@ -99,10 +99,24 @@ npm run dev:worker   # Worker (maintenance ticks)
 From the **repo root** (not `apps/extension`):
 
 ```bash
-npm run build:extension
+npm run build:extension                     # Chrome default
+npm run build:firefox -w @spotting/extension
+npm run build:safari -w @spotting/extension
+npm run package:all -w @spotting/extension
 ```
 
-Load unpacked from `apps/extension/dist` in Chrome.
+Artifacts:
+
+- Unpacked builds: `apps/extension/dist-targets/{chrome|firefox|safari}`
+- Packaged files: `apps/extension/dist-packages`
+
+For Safari App Store/TestFlight packaging, run conversion on macOS with Xcode:
+
+```bash
+npm run safari:convert -w @spotting/extension
+```
+
+See [docs/extensions/safari-release-checklist.md](./docs/extensions/safari-release-checklist.md).
 
 See [docs/capture-embed.md](./docs/capture-embed.md) for SDK embed and public key setup.
 

@@ -226,3 +226,90 @@ jobs:
             echo ""
             echo "EC2: [docs/deployment/ec2-ghcr-hosting.md](docs/deployment/ec2-ghcr-hosting.md)"
           } >> "$GITHUB_STEP_SUMMARY"
+
+  build-extension-artifacts:
+    name: Build extension artifacts (${{ matrix.target }})
+    needs: verify-and-release
+    if: needs.verify-and-release.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: chrome
+            package_name: spotting-extension-chrome.zip
+          - target: firefox
+            package_name: spotting-extension-firefox.xpi
+          - target: safari
+            package_name: spotting-extension-safari.zip
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build extension target
+        run: npm run build:${{ matrix.target }} -w @spotting/extension
+
+      - name: Package extension target
+        run: npm run package:${{ matrix.target }} -w @spotting/extension
+
+      - name: Upload target artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: extension-${{ matrix.target }}
+          path: apps/extension/dist-packages/${{ matrix.package_name }}
+          if-no-files-found: error
+
+  attach-extension-assets:
+    name: Attach extension assets to release
+    needs:
+      - verify-and-release
+      - build-extension-artifacts
+    if: needs.verify-and-release.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download extension artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: extension-artifacts
+
+      - name: Attach assets to release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG_NAME="${{ github.ref_name }}"
+          if [ -z "$TAG_NAME" ] || [[ "$TAG_NAME" == *"main"* ]]; then
+            TAG_NAME="v$(date +'%Y.%m.%d')-manual"
+          fi
+
+          gh release upload "$TAG_NAME" \
+            extension-artifacts/extension-chrome/spotting-extension-chrome.zip \
+            extension-artifacts/extension-firefox/spotting-extension-firefox.xpi \
+            extension-artifacts/extension-safari/spotting-extension-safari.zip \
+            --clobber
+
+      - name: Publish extension summary
+        run: |
+          {
+            echo "## Browser extension artifacts"
+            echo ""
+            echo "| Browser | Asset |"
+            echo "|---------|-------|"
+            echo "| Chrome | \`spotting-extension-chrome.zip\` |"
+            echo "| Firefox | \`spotting-extension-firefox.xpi\` |"
+            echo "| Safari | \`spotting-extension-safari.zip\` (convert/sign on macOS) |"
+            echo ""
+            echo "Safari packaging steps: [docs/extensions/safari-release-checklist.md](docs/extensions/safari-release-checklist.md)"
+          } >> "$GITHUB_STEP_SUMMARY"

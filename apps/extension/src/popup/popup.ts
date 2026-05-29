@@ -22,6 +22,7 @@ import {
   restrictedPageMessage,
   sendToActiveTab,
 } from "../tab-bridge";
+import { tabsCreate } from "../browser-api";
 
 const viewSetup = document.getElementById("view-setup")!;
 const viewHome = document.getElementById("view-home")!;
@@ -273,7 +274,7 @@ async function submitCapture(): Promise<boolean> {
       reportTitleEl.value = "";
       hasPendingCapture = false;
       lastPolledCaptureKey = "";
-      void chrome.tabs.create({ url: res.reportUrl });
+      void tabsCreate({ url: res.reportUrl });
       await refreshCaptureState();
       return true;
     }
@@ -383,7 +384,7 @@ saveBtn.addEventListener("click", async () => {
 
 homeBtn.addEventListener("click", () => {
   const url = dashboardHomeUrl(settings.dashboardUrl);
-  void chrome.tabs.create({ url });
+  void tabsCreate({ url });
 });
 
 settingsBtn.addEventListener("click", () => {
@@ -459,20 +460,27 @@ actionStopRecord.addEventListener("click", async () => {
     ...mountPayload(),
     type: "SPOTTING_STOP_RECORD",
   });
+  setRecordingUi(false);
   if (res.ok) {
-    setRecordingUi(Boolean(res.isRecording));
     if (res.hasPendingRecording) {
       await refreshCaptureState();
       reportTitleEl.focus();
       reportTitleEl.select();
     } else {
+      const stopError =
+        typeof (res as { stopError?: string }).stopError === "string"
+          ? (res as { stopError?: string }).stopError
+          : undefined;
       setStatus(
-        "No recording was saved. Record for a few seconds, then use Stop recording in the extension.",
+        stopError ??
+          "No recording was saved. Record for a few seconds, then use Stop recording in the extension.",
         true,
       );
+      await refreshCaptureState();
     }
   } else {
     setStatus(res.error ?? "Failed.", true);
+    await refreshCaptureState();
   }
   actionStopRecord.disabled = false;
 });

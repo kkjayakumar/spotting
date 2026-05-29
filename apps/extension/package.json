@@ -4,8 +4,16 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "vite build && node scripts/verify-dist.mjs",
-    "dev": "vite build && node scripts/verify-dist.mjs && vite build --watch",
+    "build": "node scripts/build-target.mjs chrome",
+    "build:chrome": "node scripts/build-target.mjs chrome",
+    "build:firefox": "node scripts/build-target.mjs firefox",
+    "build:safari": "node scripts/build-target.mjs safari",
+    "package:chrome": "node scripts/package-target.mjs chrome",
+    "package:firefox": "node scripts/package-target.mjs firefox",
+    "package:safari": "node scripts/package-target.mjs safari",
+    "package:all": "npm run package:chrome && npm run package:firefox && npm run package:safari",
+    "safari:convert": "bash scripts/safari-convert.sh",
+    "dev": "vite build && node scripts/verify-dist.mjs chrome && vite build --watch",
     "check-types": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {

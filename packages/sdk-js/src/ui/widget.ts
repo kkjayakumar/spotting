@@ -457,6 +457,14 @@ function finalizeHeadlessRecording(blob: Blob | null, fromBrowserStop = false) {
     return;
   }
 
+  // Firefox/Safari can trigger multiple near-simultaneous stop paths.
+  // If one path already produced a valid recording blob, do not clear it.
+  if (pendingRecording && pendingRecording.size > 0) {
+    syncAttachmentsUi?.();
+    headlessStatus("Recording saved.");
+    return;
+  }
+
   pendingRecording = null;
   syncAttachmentsUi?.();
   headlessStatus(
@@ -514,25 +522,47 @@ export async function startWidgetRecordingWithStream(
   if (panelEl) openWidgetPanel();
 }
 
-export async function stopWidgetRecording() {
+export async function stopWidgetRecording(): Promise<{
+  saved: boolean;
+  error?: string;
+}> {
   if (!runRecordStop && !client) {
     throw new Error("Spotting is not mounted on this page.");
   }
   if (runRecordStop) {
     await runRecordStop();
-  } else if (recorder) {
+    return {
+      saved: Boolean(pendingRecording && pendingRecording.size > 0),
+    };
+  }
+  if (recorder) {
     headlessStatus("Stopping recording…");
     const blob = await recorder.stop();
     finalizeHeadlessRecording(blob, false);
+    clearActiveCaptureStream();
+    removeHeadlessRecordingIndicator();
+    syncRecordButtons?.(false);
     if (!pendingRecording) {
-      throw new Error(
-        "Recording was empty. Record for a few seconds, then click Stop recording in the extension (not the browser Stop sharing button).",
-      );
+      await new Promise((resolve) => setTimeout(resolve, 300));
     }
-  } else {
-    throw new Error("No active recording. Click Record tab, allow sharing on the page, then try again.");
+    if (pendingRecording && pendingRecording.size > 0) {
+      syncAttachmentsUi?.();
+      return { saved: true };
+    }
+    return {
+      saved: false,
+      error:
+        "Recording was empty. Record for a few seconds, then click Stop recording in the extension (not the browser Stop sharing button).",
+    };
   }
-  if (panelEl) openWidgetPanel();
+  clearActiveCaptureStream();
+  removeHeadlessRecordingIndicator();
+  syncRecordButtons?.(false);
+  return {
+    saved: false,
+    error:
+      "No active recording. Click Record tab, allow sharing on the page, then try again.",
+  };
 }
 
 export function openWidgetPanel() {

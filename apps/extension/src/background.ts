@@ -4,8 +4,13 @@ import {
   type ApiFetchMessage,
   proxyApiFetch,
 } from "./api-proxy";
+import {
+  addRuntimeInstalledListener,
+  addRuntimeMessageListener,
+  tabCaptureGetMediaStreamId,
+} from "./browser-api";
 
-chrome.runtime.onMessage.addListener(
+addRuntimeMessageListener(
   (
     message:
       | ApiFetchMessage
@@ -26,17 +31,23 @@ chrome.runtime.onMessage.addListener(
         return false;
       }
 
-      chrome.tabCapture.getMediaStreamId({ targetTabId: tabId }, (streamId) => {
-        if (chrome.runtime.lastError || !streamId) {
+      void tabCaptureGetMediaStreamId(tabId).then((streamId) => {
+        if (!streamId) {
           sendResponse({
             ok: false,
-            error:
-              chrome.runtime.lastError?.message ??
-              "Tab capture is not available on this page.",
+            error: "Tab capture is not available on this page.",
           });
           return;
         }
         sendResponse({ ok: true, streamId });
+      }).catch((error) => {
+        sendResponse({
+          ok: false,
+          error:
+            error instanceof Error
+              ? error.message
+              : "Tab capture is not available on this page.",
+        });
       });
       return true;
     }
@@ -50,7 +61,7 @@ chrome.runtime.onMessage.addListener(
   },
 );
 
-chrome.runtime.onInstalled.addListener(() => {
+addRuntimeInstalledListener(() => {
   /* extension installed or updated */
 });
 

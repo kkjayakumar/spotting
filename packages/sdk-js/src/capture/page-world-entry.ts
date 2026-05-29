@@ -7,6 +7,9 @@
   const win = window as unknown as Record<string, unknown>;
   if (win[FLAG]) return;
   win[FLAG] = true;
+  if (document.documentElement) {
+    document.documentElement.setAttribute("data-spotting-capture", "v1");
+  }
 
   const EVENT_NAME = "spotting:capture:v1";
   const MESSAGE_SOURCE = "spotting-capture-v1";

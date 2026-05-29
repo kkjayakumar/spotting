@@ -1,5 +1,11 @@
 /// <reference types="chrome" />
 
+import {
+  runtimeLastErrorMessage,
+  runtimeSendMessage,
+  withLastErrorIgnored,
+} from "./browser-api";
+
 export type ApiFetchMessage = {
   type: "SPOTTING_API_FETCH";
   url: string;
@@ -112,45 +118,43 @@ export async function sendApiFetch(
 
   const encodedBody = encodeRequestBody(message.body ?? null);
 
-  return new Promise((resolve) => {
-    chrome.runtime.sendMessage(
-      {
-        type: "SPOTTING_API_FETCH",
-        url: message.url,
-        method: message.method,
-        headers: message.headers,
-        ...encodedBody,
-      } satisfies ApiFetchMessage,
-      (response: ApiFetchResult | undefined) => {
-        const lastError = chrome.runtime.lastError;
-        if (lastError?.message) {
-          resolve({
-            ok: false,
-            error: `Extension could not reach the API proxy: ${lastError.message}. Reload the extension in chrome://extensions.`,
-          });
-          return;
-        }
-        if (!response) {
-          resolve({
-            ok: false,
-            error:
-              "Extension background did not respond. Reload the extension in chrome://extensions.",
-          });
-          return;
-        }
-        resolve(response);
-      },
-    );
-  });
+  try {
+    const response = await runtimeSendMessage<
+      ApiFetchMessage,
+      ApiFetchResult | undefined
+    >({
+      type: "SPOTTING_API_FETCH",
+      url: message.url,
+      method: message.method,
+      headers: message.headers,
+      ...encodedBody,
+    } satisfies ApiFetchMessage);
+    if (!response) {
+      return {
+        ok: false,
+        error:
+          "Extension background did not respond. Reload the extension and try again.",
+      };
+    }
+    return response;
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : "Unknown extension runtime error";
+    return {
+      ok: false,
+      error: `Extension could not reach the API proxy: ${msg}. Reload the extension and try again.`,
+    };
+  }
 }
 
 async function wakeServiceWorker(): Promise<void> {
-  await new Promise<void>((resolve) => {
-    chrome.runtime.sendMessage({ type: "SPOTTING_PING_BG" }, () => {
-      void chrome.runtime.lastError;
-      resolve();
+  try {
+    await runtimeSendMessage<{ type: "SPOTTING_PING_BG" }, unknown>({
+      type: "SPOTTING_PING_BG",
     });
-  });
+  } catch {
+    withLastErrorIgnored();
+    void runtimeLastErrorMessage();
+  }
 }
 
 export async function testApiHealth(apiBaseUrl: string): Promise<{

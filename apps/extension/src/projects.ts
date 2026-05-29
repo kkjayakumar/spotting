@@ -1,6 +1,7 @@
 /// <reference types="chrome" />
 
 import { sendApiFetch } from "./api-proxy";
+import { storageGet, storageSet } from "./browser-api";
 
 export type ExtensionProject = {
   id: string;
@@ -12,13 +13,13 @@ export type ExtensionProject = {
 const PROJECT_STORAGE_KEY = "spotting_report_group_id";
 
 export async function loadSelectedProjectId(): Promise<string | null> {
-  const result = await chrome.storage.local.get(PROJECT_STORAGE_KEY);
+  const result = await storageGet("local", PROJECT_STORAGE_KEY);
   const projectId = result[PROJECT_STORAGE_KEY];
   return typeof projectId === "string" && projectId.length > 0 ? projectId : null;
 }
 
 export async function saveSelectedProjectId(projectId: string | null): Promise<void> {
-  await chrome.storage.local.set({ [PROJECT_STORAGE_KEY]: projectId });
+  await storageSet("local", { [PROJECT_STORAGE_KEY]: projectId });
 }
 
 export async function fetchExtensionProjects(input: {

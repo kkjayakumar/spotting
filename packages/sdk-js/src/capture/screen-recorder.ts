@@ -13,11 +13,23 @@ let mediaRecorder: MediaRecorder | null = null;
 let chunks: BlobPart[] = [];
 let stream: MediaStream | null = null;
 let stopping = false;
+let activeStopPromise: Promise<Blob | null> | null = null;
+
+function isFirefox(): boolean {
+  const ua = typeof navigator !== "undefined" ? navigator.userAgent.toLowerCase() : "";
+  return ua.includes("firefox");
+}
 
 function pickMime(): string | undefined {
+  // Firefox can report support for codec strings but still produce empty blobs
+  // for display-media tab streams; let Firefox choose defaults.
+  if (isFirefox()) {
+    return undefined;
+  }
+
   const cands = [
-    "video/webm;codecs=vp9,opus",
-    "video/webm;codecs=vp8,opus",
+    "video/webm;codecs=vp9",
+    "video/webm;codecs=vp8",
     "video/webm",
     "video/mp4",
   ];
@@ -54,6 +66,13 @@ function buildBlob(rec: MediaRecorder): Blob | null {
   return new Blob(chunks, { type: rec.mimeType || "video/webm" });
 }
 
+function buildBlobFromChunks(mimeType?: string): Blob | null {
+  if (chunks.length === 0) {
+    return null;
+  }
+  return new Blob(chunks, { type: mimeType || "video/webm" });
+}
+
 export async function attachRecorderToStream(
   displayStream: MediaStream,
   options?: AttachRecorderOptions,
@@ -70,12 +89,16 @@ export async function attachRecorderToStream(
     if (e.data.size > 0) chunks.push(e.data);
   };
 
-  // Smaller slices so short recordings still produce data before stop.
-  mediaRecorder.start(250);
+  // Firefox often emits no data with short timeslices on display-media streams.
+  if (isFirefox()) {
+    mediaRecorder.start();
+  } else {
+    mediaRecorder.start(250);
+  }
 
   const stop = async (): Promise<Blob | null> => {
     if (stopping) {
-      return null;
+      return activeStopPromise;
     }
     stopping = true;
 
@@ -86,20 +109,30 @@ export async function attachRecorderToStream(
 
     if (!rec || rec.state === "inactive") {
       s?.getTracks().forEach((t) => t.stop());
+      const blob = buildBlobFromChunks(rec?.mimeType);
       chunks = [];
       stopping = false;
-      return null;
+      return blob;
     }
 
-    return await new Promise<Blob | null>((resolve) => {
+    activeStopPromise = new Promise<Blob | null>((resolve) => {
+      let settled = false;
+      const settle = (blob: Blob | null) => {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        s?.getTracks().forEach((t) => t.stop());
+        chunks = [];
+        stopping = false;
+        activeStopPromise = null;
+        resolve(blob);
+      };
+
       rec.addEventListener(
         "stop",
         () => {
-          s?.getTracks().forEach((t) => t.stop());
-          const blob = buildBlob(rec);
-          chunks = [];
-          stopping = false;
-          resolve(blob);
+          settle(buildBlob(rec));
         },
         { once: true },
       );
@@ -107,15 +140,22 @@ export async function attachRecorderToStream(
       try {
         if (rec.state === "recording") {
           rec.requestData();
+          if (isFirefox()) {
+            rec.requestData();
+          }
         }
         rec.stop();
       } catch {
-        s?.getTracks().forEach((t) => t.stop());
-        chunks = [];
-        stopping = false;
-        resolve(null);
+        settle(buildBlobFromChunks(rec.mimeType));
       }
+
+      // Firefox occasionally misses the "stop" event callback despite recorder stop.
+      const fallbackMs = isFirefox() ? 2500 : 1500;
+      setTimeout(() => {
+        settle(buildBlobFromChunks(rec.mimeType));
+      }, fallbackMs);
     });
+    return await activeStopPromise;
   };
 
   for (const track of displayStream.getVideoTracks()) {

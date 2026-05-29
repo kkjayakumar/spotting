@@ -15,10 +15,13 @@ type ChromeRuntime = {
   getURL: (path: string) => string;
 };
 
-function getChromeRuntime(): ChromeRuntime | null {
+function getExtensionRuntime(): ChromeRuntime | null {
   try {
-    const g = globalThis as { chrome?: { runtime?: ChromeRuntime } };
-    const runtime = g.chrome?.runtime;
+    const g = globalThis as {
+      chrome?: { runtime?: ChromeRuntime };
+      browser?: { runtime?: ChromeRuntime };
+    };
+    const runtime = g.chrome?.runtime ?? g.browser?.runtime;
     if (runtime?.id && typeof runtime.getURL === "function") {
       return runtime;
     }
@@ -29,7 +32,7 @@ function getChromeRuntime(): ChromeRuntime | null {
 }
 
 export function hasChromeExtensionRuntime(): boolean {
-  return getChromeRuntime() !== null;
+  return getExtensionRuntime() !== null;
 }
 
 function injectViaExtension(runtime: ChromeRuntime): Promise<void> {
@@ -50,6 +53,10 @@ function injectViaExtension(runtime: ChromeRuntime): Promise<void> {
 }
 
 export function isPageCaptureActive(): boolean {
+  // DOM attribute is set in the page MAIN world and visible to isolated content scripts.
+  if (document.documentElement?.getAttribute("data-spotting-capture") === "v1") {
+    return true;
+  }
   return Boolean((window as unknown as Record<string, unknown>)[PAGE_CAPTURE_FLAG]);
 }
 
@@ -137,7 +144,7 @@ export function installPageCaptureBridge(): void {
 }
 
 export async function ensurePageWorldCapture(): Promise<void> {
-  const runtime = getChromeRuntime();
+  const runtime = getExtensionRuntime();
   if (!runtime) return;
   const win = window as unknown as Record<string, unknown>;
   installPageCaptureBridge();

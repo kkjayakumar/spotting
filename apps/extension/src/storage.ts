@@ -4,6 +4,7 @@ import {
   capturePublicKeyValidationMessage,
   isCapturePublicKey,
 } from "@spotting/shared/constants/capture-keys";
+import { storageGet, storageSet } from "./browser-api";
 
 const API_KEY = "spottingApiBase";
 const PUBLIC_KEY = "spottingPublicKey";
@@ -47,15 +48,15 @@ export function normalizeApiBaseUrl(url: string): NormalizeApiResult {
 }
 
 async function readArea(
-  area: chrome.storage.StorageArea,
+  area: "sync" | "local",
 ): Promise<Record<string, unknown>> {
-  return area.get([API_KEY, PUBLIC_KEY, DASHBOARD_KEY]);
+  return storageGet(area, [API_KEY, PUBLIC_KEY, DASHBOARD_KEY]);
 }
 
 export async function loadExtensionSettings(): Promise<ExtensionSettings> {
   const [syncValues, localValues] = await Promise.all([
-    readArea(chrome.storage.sync),
-    readArea(chrome.storage.local),
+    readArea("sync"),
+    readArea("local"),
   ]);
 
   const merged = { ...localValues, ...syncValues };
@@ -100,8 +101,8 @@ export async function saveExtensionSettings(
   };
 
   await Promise.all([
-    chrome.storage.sync.set(payload),
-    chrome.storage.local.set(payload),
+    storageSet("sync", payload),
+    storageSet("local", payload),
   ]);
 }
 

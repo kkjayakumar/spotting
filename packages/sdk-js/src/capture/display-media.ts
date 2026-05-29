@@ -10,6 +10,17 @@ export function requestDisplayMediaStream(): Promise<MediaStream> {
     );
   }
 
+  const ua = typeof navigator !== "undefined" ? navigator.userAgent.toLowerCase() : "";
+  const isFirefox = ua.includes("firefox");
+
+  // Firefox is strict about optional displaySurface constraints; keep the request minimal.
+  if (isFirefox) {
+    return navigator.mediaDevices.getDisplayMedia({
+      video: true,
+      audio: false,
+    });
+  }
+
   return navigator.mediaDevices.getDisplayMedia({
     video: {
       displaySurface: "browser",

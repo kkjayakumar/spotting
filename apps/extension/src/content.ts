@@ -15,6 +15,7 @@ import {
 } from "@spotting/sdk-js";
 
 import { installExtensionFetchBridge } from "./extension-fetch-bridge";
+import { addRuntimeMessageListener, storageSet } from "./browser-api";
 import {
   captureCurrentTabStream,
   isExtensionTabCaptureAvailable,
@@ -45,7 +46,7 @@ function syncDashboardReportGroupPreference(dashboardUrl?: string) {
   const fromUrl =
     urlGroupId && urlGroupId.length > 0 && urlGroupId !== "none" ? urlGroupId : null;
   const normalized = fromUrl ?? readLocalReportGroupPreference();
-  void chrome.storage.local.set({ [REPORT_GROUP_STORAGE_KEY]: normalized });
+  void storageSet("local", { [REPORT_GROUP_STORAGE_KEY]: normalized });
 }
 
 function installDashboardGroupSync(dashboardUrl?: string) {
@@ -112,7 +113,7 @@ function registerContentScript() {
     }
   }
 
-  chrome.runtime.onMessage.addListener(
+  addRuntimeMessageListener(
     (message: ContentMessage, _sender, sendResponse) => {
       if (message.type === "SPOTTING_PING") {
         sendResponse({ ok: true });
@@ -168,7 +169,15 @@ function registerContentScript() {
                 await startWidgetRecording();
               }
             } else if (message.type === "SPOTTING_STOP_RECORD") {
-              await stopWidgetRecording();
+              const stopResult = await stopWidgetRecording();
+              sendResponse({
+                ok: true,
+                ...getWidgetRecordingState(),
+                ...getPendingCaptureState(),
+                stopSaved: stopResult.saved,
+                stopError: stopResult.error,
+              });
+              return;
             }
             sendResponse({
               ok: true,
