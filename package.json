@@ -13,7 +13,7 @@
     "dev:web": "turbo run dev --filter=@spotting/web",
     "dev:worker": "turbo run dev --filter=@spotting/worker",
     "build:sdk": "turbo run build --filter=@spotting/sdk-js",
-    "build:extension": "npm run build -w @spotting/sdk-js && npm run build:chrome -w @spotting/extension",
+    "build:extension": "npm run build -w @spotting/sdk-js && npm run build:chrome -w @spotting/extension && npm run build:firefox -w @spotting/extension && npm run build:safari -w @spotting/extension && npm run package:all -w @spotting/extension",
     "build": "turbo run build",
     "check-types": "npm run db:generate && turbo run check-types",
     "lint": "npm run db:generate && turbo run lint",

@@ -32,7 +32,11 @@ COPY apps/web ./apps/web
 COPY apps/extension ./apps/extension
 COPY packages ./packages
 
-RUN npm run build:extension \
+RUN npm run build -w @spotting/sdk-js \
+  && npm run build:chrome -w @spotting/extension \
+  && npm run build:firefox -w @spotting/extension \
+  && npm run build:safari -w @spotting/extension \
+  && npm run package:all -w @spotting/extension \
   && npm run build -- --filter=@spotting/web \
   && cp -R apps/web/.next ./apps/web/.next-template \
   && rm -rf apps/web/.next-template/cache apps/web/.next-template/dev \
@@ -47,6 +51,8 @@ COPY --from=builder /app/standalone ./
 COPY --from=builder /app/apps/web/.next-template ./apps/web/.next-template
 COPY --from=builder /app/apps/web/public ./apps/web/public
 COPY --from=builder /app/apps/extension/dist ./apps/extension/dist
+COPY --from=builder /app/apps/extension/dist-targets ./apps/extension/dist-targets
+COPY --from=builder /app/apps/extension/dist-packages ./apps/extension/dist-packages
 COPY apps/web/docker-entrypoint.sh ./apps/web/docker-entrypoint.sh
 
 RUN chmod +x apps/web/docker-entrypoint.sh

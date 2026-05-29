@@ -27,7 +27,7 @@ export const dashboardSettingsNavItems = [
   {
     href: "/dashboard/settings/extension" as const,
     title: "Browser extension",
-    description: "Chromium capture extension",
+    description: "Chrome, Firefox, Safari",
     icon: Puzzle,
   },
 ] as const

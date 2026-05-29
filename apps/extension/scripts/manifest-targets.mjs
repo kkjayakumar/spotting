@@ -68,7 +68,9 @@ export function buildManifestForTarget(target) {
   }
 
   if (target === "firefox") {
+    // AMO requires service_worker + scripts fallback; same IIFE file (vite.background.iife.config.ts).
     manifest.background = {
+      service_worker: "background.js",
       scripts: ["background.js"],
     };
     // MAIN world required so fetch/console patches run in the page, not the isolated extension world.
@@ -77,6 +79,10 @@ export function buildManifestForTarget(target) {
       gecko: {
         id: "extension@spotting.dev",
         strict_min_version: "128.0",
+        // Required for new AMO submissions (Nov 2025+). Declares what is sent when the user submits a report.
+        data_collection_permissions: {
+          required: ["websiteActivity", "websiteContent"],
+        },
       },
     };
     return manifest;

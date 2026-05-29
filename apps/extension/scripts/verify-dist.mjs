@@ -50,6 +50,22 @@ if (target === "firefox") {
     console.error("Firefox target cannot include tabCapture permission.");
     process.exit(1);
   }
+  if (manifest.background?.service_worker !== "background.js") {
+    console.error("Firefox target must use background.service_worker for MV3 AMO.");
+    process.exit(1);
+  }
+  if (!Array.isArray(manifest.background?.scripts) || manifest.background.scripts[0] !== "background.js") {
+    console.error("Firefox target must set background.scripts fallback for AMO.");
+    process.exit(1);
+  }
+  if (manifest.background?.type === "module") {
+    console.error("Firefox target must not set background.type module (IIFE worker).");
+    process.exit(1);
+  }
+  if (!manifest.browser_specific_settings?.gecko?.data_collection_permissions?.required?.length) {
+    console.error("Firefox target must set gecko.data_collection_permissions.");
+    process.exit(1);
+  }
   if (manifest.content_scripts?.[0]?.world !== "MAIN") {
     console.error('Firefox target must set content_scripts[0].world to "MAIN".');
     process.exit(1);
