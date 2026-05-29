@@ -14,16 +14,17 @@ function readCookieToken(cookieString: string): string | null {
   }
 }
 
-async function syncSessionCookie(token: string): Promise<void> {
+async function syncSessionCookie(token: string): Promise<boolean> {
   try {
-    await fetch("/api/auth/session", {
+    const response = await fetch("/api/auth/session", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ token }),
       credentials: "include",
     });
+    return response.ok;
   } catch {
-    /* SSR may still use non-HttpOnly fallback cookie below */
+    return false;
   }
 }
 

@@ -8,7 +8,6 @@ import { Field, FieldError, FieldLabel } from "@spotting/ui/components/ui/field"
 import { Input } from "@spotting/ui/components/ui/input"
 import { useForm } from "@tanstack/react-form"
 import Link from "next/link"
-import { useRouter } from "nextjs-toploader/app"
 import { useEffect } from "react"
 import { toast } from "sonner"
 import { AuthShell } from "@/components/auth/auth-shell"
@@ -16,7 +15,6 @@ import { AUTH_MIN_PASSWORD_LENGTH, getAuthErrorMessage } from "@/lib/auth"
 import { registerFormSchema } from "@/lib/schema/auth"
 
 export function SignUpForm() {
-  const router = useRouter()
   const { data: session, isPending } = authClient.useSession()
 
   const form = useForm({
@@ -49,22 +47,35 @@ export function SignUpForm() {
         return
       }
 
-      if (result.data?.token) {
+      if (result.data?.sessionToken) {
         toast.success("Account created successfully.")
-        router.push("/")
+        window.location.assign("/dashboard")
         return
       }
 
       toast.success("Account created. Sign in to continue.")
-      router.push(`/login?email=${encodeURIComponent(value.email)}`)
+      window.location.assign(`/login?email=${encodeURIComponent(value.email)}`)
     },
   })
 
   useEffect(() => {
-    if (session) {
-      router.replace("/")
+    if (!session) return
+
+    const token = localStorage.getItem("spotting_token")
+    if (token) {
+      void fetch("/api/auth/session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token }),
+        credentials: "include",
+      }).finally(() => {
+        window.location.assign("/dashboard")
+      })
+      return
     }
-  }, [router, session])
+
+    window.location.assign("/dashboard")
+  }, [session])
 
   if (isPending) {
     return (

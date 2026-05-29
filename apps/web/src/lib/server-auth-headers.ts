@@ -11,8 +11,11 @@ export async function getServerAuthHeaders(): Promise<Headers> {
   })
 
   const token = cookieStore.get("spotting_token")?.value
-  if (token) {
-    authHeaders.set("Authorization", `Bearer ${token}`)
+  const bearerFromHeader = requestHeaders.get("authorization")?.replace(/^Bearer\s+/i, "")
+  const sessionToken = token ?? bearerFromHeader
+
+  if (sessionToken) {
+    authHeaders.set("Authorization", `Bearer ${sessionToken}`)
   }
 
   return authHeaders
