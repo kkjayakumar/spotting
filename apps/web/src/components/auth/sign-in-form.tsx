@@ -88,6 +88,7 @@ export function SignInForm() {
 
       await queryClient.invalidateQueries({ queryKey: ["session"] })
       toast.success("Signed in successfully.")
+      router.refresh()
       router.push(redirectPath as never)
     },
   })

@@ -1,6 +1,7 @@
 import { authClient } from "@spotting/auth/client"
-import { headers } from "next/headers"
 import { cache } from "react"
+
+import { getServerAuthHeaders } from "@/lib/server-auth-headers"
 
 export type ProtectedOrganization = {
   id: string
@@ -10,11 +11,11 @@ export type ProtectedOrganization = {
 }
 
 export const getProtectedAuthData = cache(async () => {
-  const requestHeaders = await headers()
+  const authHeaders = await getServerAuthHeaders()
 
   const { data: session } = await authClient.getSession({
     fetchOptions: {
-      headers: requestHeaders,
+      headers: authHeaders,
     },
   })
 
@@ -27,7 +28,7 @@ export const getProtectedAuthData = cache(async () => {
 
   const { data: organizations } = await authClient.organization.list({
     fetchOptions: {
-      headers: requestHeaders,
+      headers: authHeaders,
     },
   })
 

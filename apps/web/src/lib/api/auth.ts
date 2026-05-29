@@ -4,6 +4,40 @@ import { API_BASE_URL } from "@/lib/api-base-url";
 
 import { orgClient } from "./orgs";
 
+function readCookieToken(cookieString: string): string | null {
+  const match = cookieString.match(/(?:^|;\s*)spotting_token=([^;]+)/);
+  if (!match?.[1]) return null;
+  try {
+    return decodeURIComponent(match[1]);
+  } catch {
+    return match[1];
+  }
+}
+
+function persistSessionToken(token: string): void {
+  try {
+    localStorage.setItem("spotting_token", token);
+  } catch {
+    /* ignore */
+  }
+  const secure =
+    typeof window !== "undefined" && window.location.protocol === "https:"
+      ? "; Secure"
+      : "";
+  document.cookie = `spotting_token=${encodeURIComponent(token)}; path=/; max-age=604800; SameSite=Lax${secure}`;
+}
+
+function clearSessionToken(): void {
+  try {
+    localStorage.removeItem("spotting_token");
+    localStorage.removeItem("spotting_active_org");
+  } catch {
+    /* ignore */
+  }
+  document.cookie =
+    "spotting_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+}
+
 async function fetchApi(path: string, options: any = {}) {
   const headers = new Headers(options.headers);
   headers.set("Content-Type", "application/json");
@@ -16,7 +50,7 @@ async function fetchApi(path: string, options: any = {}) {
   }
 
   if (!token && headers.has("Authorization")) {
-    token = headers.get("Authorization")?.replace("Bearer ", "");
+    token = headers.get("Authorization")?.replace("Bearer ", "") ?? null;
   }
 
   if (!token) {
@@ -27,8 +61,7 @@ async function fetchApi(path: string, options: any = {}) {
       const h = new Headers(options.headers);
       cookieString = h.get("cookie") || "";
     }
-    const match = cookieString.match(/spotting_token=([^;]+)/);
-    if (match) token = match[1];
+    token = readCookieToken(cookieString);
   }
 
   if (token) headers.set("Authorization", `Bearer ${token}`);
@@ -111,8 +144,7 @@ export const spottingAuthClient = {
         body: JSON.stringify({ email, password }),
       });
       if (res.data?.sessionToken) {
-        localStorage.setItem("spotting_token", res.data.sessionToken);
-        document.cookie = `spotting_token=${res.data.sessionToken}; path=/; max-age=604800; SameSite=Lax`;
+        persistSessionToken(res.data.sessionToken);
       }
       return res;
     },
@@ -127,8 +159,7 @@ export const spottingAuthClient = {
         body: JSON.stringify(payload),
       });
       if (res.data?.sessionToken) {
-        localStorage.setItem("spotting_token", res.data.sessionToken);
-        document.cookie = `spotting_token=${res.data.sessionToken}; path=/; max-age=604800; SameSite=Lax`;
+        persistSessionToken(res.data.sessionToken);
       }
       return res;
     },
@@ -138,14 +169,7 @@ export const spottingAuthClient = {
       method: "POST",
       ...(opts?.fetchOptions ?? {}),
     });
-    try {
-      localStorage.removeItem("spotting_token");
-      localStorage.removeItem("spotting_active_org");
-    } catch {
-      /* ignore */
-    }
-    document.cookie =
-      "spotting_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+    clearSessionToken();
     return { data: { ok: true }, error: null };
   },
   emailOtp: {

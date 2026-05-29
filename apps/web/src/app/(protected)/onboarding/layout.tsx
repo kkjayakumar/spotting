@@ -13,7 +13,7 @@ export default async function OnboardingLayout({
   const hasOrganization = auth.organizations.length > 0
 
   if (hasOrganization) {
-    redirect("/")
+    redirect("/dashboard")
   }
 
   return children

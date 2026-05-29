@@ -63,7 +63,7 @@ export default function CreateOrganizationOnboardingForm() {
       }
 
       toast.success("Organization created successfully")
-      router.push("/")
+      router.push("/dashboard")
       router.refresh()
     },
   })

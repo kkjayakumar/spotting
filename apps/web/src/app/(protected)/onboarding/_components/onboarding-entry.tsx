@@ -27,8 +27,24 @@ type OnboardingState = {
 
 async function fetchOnboardingState(): Promise<OnboardingState> {
   const headers = new Headers({ "Content-Type": "application/json" })
-  const token =
-    typeof window !== "undefined" ? localStorage.getItem("spotting_token") : null
+  let token: string | null = null
+  if (typeof window !== "undefined") {
+    try {
+      token = localStorage.getItem("spotting_token")
+    } catch {
+      /* ignore */
+    }
+    if (!token) {
+      const match = document.cookie.match(/(?:^|;\s*)spotting_token=([^;]+)/)
+      if (match?.[1]) {
+        try {
+          token = decodeURIComponent(match[1])
+        } catch {
+          token = match[1]
+        }
+      }
+    }
+  }
   if (token) headers.set("Authorization", `Bearer ${token}`)
 
   const response = await fetch(`${API_BASE_URL}/v1/onboarding/state`, { headers })
