@@ -7,7 +7,6 @@ import {
   CardTitle,
 } from "@spotting/ui/components/ui/card"
 import type { Metadata } from "next"
-import { headers } from "next/headers"
 import { redirect } from "next/navigation"
 
 import { getProtectedAuthData } from "@/app/(protected)/_lib/get-protected-auth-data"
@@ -51,7 +50,6 @@ export default async function PublicKeysSettingsPage() {
   const captureKeysState = canManage
     ? await client.captureKey
         .list({
-          headers: requestHeaders,
           organizationId: activeOrganization.id,
         })
         .then((data: CaptureKeyList) => ({

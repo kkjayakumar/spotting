@@ -7,7 +7,6 @@ import {
   CardTitle,
 } from "@spotting/ui/components/ui/card"
 import type { Metadata } from "next"
-import { headers } from "next/headers"
 import { redirect } from "next/navigation"
 
 import { getProtectedAuthData } from "@/app/(protected)/_lib/get-protected-auth-data"
@@ -122,13 +121,11 @@ export default async function OrganizationSettingsPage({
     : authClient.organization.listMembers({
         query: membersListQuery,
       })
-  const requestHeaders = await headers()
   const billingPromise: Promise<{
     data: BillingSnapshot | null
     error: unknown
   }> = fetchApiWithRequestHeaders(
     `/v1/orgs/${activeOrganization.id}/billing/plan`,
-    { headers: requestHeaders },
   )
     .then((data: BillingSnapshot) => ({
       data,
