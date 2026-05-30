@@ -1,7 +1,17 @@
-import { cookies } from "next/headers"
 import { NextResponse } from "next/server"
 
 const MAX_AGE_SECONDS = 60 * 60 * 24 * 7
+const COOKIE_NAME = "spotting_token"
+
+function sessionCookieOptions() {
+  return {
+    path: "/",
+    maxAge: MAX_AGE_SECONDS,
+    sameSite: "lax" as const,
+    secure: process.env.NODE_ENV === "production",
+    httpOnly: true,
+  }
+}
 
 export async function POST(request: Request) {
   let token: unknown
@@ -16,20 +26,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Missing token" }, { status: 400 })
   }
 
-  const cookieStore = await cookies()
-  cookieStore.set("spotting_token", token, {
-    path: "/",
-    maxAge: MAX_AGE_SECONDS,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    httpOnly: true,
-  })
-
-  return NextResponse.json({ ok: true })
+  const response = NextResponse.json({ ok: true })
+  response.cookies.set(COOKIE_NAME, token, sessionCookieOptions())
+  return response
 }
 
 export async function DELETE() {
-  const cookieStore = await cookies()
-  cookieStore.delete("spotting_token")
-  return NextResponse.json({ ok: true })
+  const response = NextResponse.json({ ok: true })
+  response.cookies.set(COOKIE_NAME, "", {
+    ...sessionCookieOptions(),
+    maxAge: 0,
+  })
+  return response
 }

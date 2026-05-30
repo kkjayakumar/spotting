@@ -22,10 +22,9 @@ async function persistSessionToken(token: string): Promise<void> {
     /* ignore */
   }
 
-  const synced = await syncSessionCookie(token);
+  await syncSessionCookie(token);
 
-  // Fallback readable cookie if the HttpOnly route failed (e.g. route not deployed yet).
-  if (!synced && typeof document !== "undefined") {
+  if (typeof document !== "undefined") {
     const secure =
       window.location.protocol === "https:" ? "; Secure" : "";
     document.cookie = `spotting_token=${token}; path=/; max-age=604800; SameSite=Lax${secure}`;

@@ -15,13 +15,21 @@ export async function syncSessionCookie(token: string): Promise<boolean> {
 
 /** Set session cookie then hard-navigate (avoids client-side redirect loops). */
 export async function finishAuthRedirect(path: string): Promise<void> {
+  let token: string | null = null
   try {
-    const token = localStorage.getItem("spotting_token")
-    if (token) {
-      await syncSessionCookie(token)
-    }
+    token = localStorage.getItem("spotting_token")
   } catch {
     /* localStorage blocked */
   }
+
+  if (token) {
+    const synced = await syncSessionCookie(token)
+    if (!synced && typeof document !== "undefined") {
+      const secure =
+        window.location.protocol === "https:" ? "; Secure" : ""
+      document.cookie = `${"spotting_token"}=${token}; path=/; max-age=604800; SameSite=Lax${secure}`
+    }
+  }
+
   window.location.assign(path)
 }
