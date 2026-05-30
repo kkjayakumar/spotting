@@ -1,4 +1,3 @@
-import { authClient } from "@spotting/auth/client"
 import {
   Card,
   CardContent,
@@ -10,7 +9,11 @@ import type { Metadata } from "next"
 import { redirect } from "next/navigation"
 
 import { getProtectedAuthData } from "@/app/(protected)/_lib/get-protected-auth-data"
-import { client } from "@/lib/api"
+import {
+  listCaptureKeysServer,
+  type CaptureKeyListItem,
+} from "@/lib/api/capture-keys.server"
+import { serverOrgClient } from "@/lib/api/orgs.server"
 
 import { PublicKeysManagement } from "../_components/public-keys/public-keys-management"
 import { getRequestErrorMessage } from "../_lib/get-request-error-message"
@@ -19,8 +22,6 @@ export const metadata: Metadata = {
   title: "Public Keys Settings",
   description: "Manage site-scoped public keys and widget embed configuration.",
 }
-
-type CaptureKeyList = Awaited<ReturnType<typeof client.captureKey.list>>
 
 export default async function PublicKeysSettingsPage() {
   const { organizations, session } = await getProtectedAuthData()
@@ -39,7 +40,7 @@ export default async function PublicKeysSettingsPage() {
     ) ?? organizations[0]
 
   const { data: memberRoleData } =
-    await authClient.organization.getActiveMemberRole({
+    await serverOrgClient.getActiveMemberRole({
       query: {
         organizationId: activeOrganization.id,
       },
@@ -48,20 +49,17 @@ export default async function PublicKeysSettingsPage() {
   const canManage =
     memberRoleData?.role === "owner" || memberRoleData?.role === "admin"
   const captureKeysState = canManage
-    ? await client.captureKey
-        .list({
-          organizationId: activeOrganization.id,
-        })
-        .then((data: CaptureKeyList) => ({
+    ? await listCaptureKeysServer(activeOrganization.id)
+        .then((data: CaptureKeyListItem[]) => ({
           data,
           error: null,
         }))
         .catch((error: unknown) => ({
-          data: [] as CaptureKeyList,
+          data: [] as CaptureKeyListItem[],
           error,
         }))
     : {
-        data: [],
+        data: [] as CaptureKeyListItem[],
         error: null,
       }
 

@@ -1,4 +1,3 @@
-import { authClient } from "@spotting/auth/client"
 import {
   Card,
   CardContent,
@@ -10,8 +9,8 @@ import type { Metadata } from "next"
 import { redirect } from "next/navigation"
 
 import { getProtectedAuthData } from "@/app/(protected)/_lib/get-protected-auth-data"
-import { billingClient } from "@/lib/api/billing"
-import { fetchApiWithRequestHeaders } from "@/lib/api-fetch"
+import { serverOrgClient } from "@/lib/api/orgs.server"
+import { fetchServerApi } from "@/lib/server-api-fetch"
 
 import { OrganizationMembersSection } from "../_components/org-members/organization-members-section"
 import { OrganizationDangerZone } from "../_components/organization-danger-zone"
@@ -28,19 +27,23 @@ interface OrganizationSettingsPageProps {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>
 }
 
-type MembersListOptions = NonNullable<
-  Parameters<typeof authClient.organization.listMembers>[0]
->
-type MembersListQuery = NonNullable<MembersListOptions["query"]>
+type MembersListQuery = {
+  organizationId: string
+  limit?: number
+  offset?: number
+  sortBy?: string
+  sortDirection?: string
+}
 type MembersListResult = Awaited<
-  ReturnType<typeof authClient.organization.listMembers>
+  ReturnType<typeof serverOrgClient.listMembers>
 >
 type OrganizationMember = NonNullable<
   NonNullable<MembersListResult["data"]>["members"]
 >[number]
-type BillingSnapshot = Awaited<
-  ReturnType<typeof billingClient.getCurrentOrganizationPlan>
->
+type BillingSnapshot = {
+  plan?: string
+  entitlements?: { memberCap?: number | null }
+}
 function toIsoString(value: Date | string): string {
   return value instanceof Date ? value.toISOString() : value
 }
@@ -76,7 +79,7 @@ export default async function OrganizationSettingsPage({
   const membersPromise: Promise<MembersListResult> = membersQuery.search
     ? (async () => {
         const initialMembersResponse =
-          await authClient.organization.listMembers({
+          await serverOrgClient.listMembers({
             query: {
               ...membersListQuery,
               limit: 1,
@@ -87,7 +90,7 @@ export default async function OrganizationSettingsPage({
           return initialMembersResponse
         }
 
-        const fullMembersResponse = await authClient.organization.listMembers({
+        const fullMembersResponse = await serverOrgClient.listMembers({
           query: {
             ...membersListQuery,
             limit: Math.max(1, initialMembersResponse.data.total),
@@ -118,13 +121,13 @@ export default async function OrganizationSettingsPage({
           },
         }
       })()
-    : authClient.organization.listMembers({
+    : serverOrgClient.listMembers({
         query: membersListQuery,
       })
   const billingPromise: Promise<{
     data: BillingSnapshot | null
     error: unknown
-  }> = fetchApiWithRequestHeaders(
+  }> = fetchServerApi(
     `/v1/orgs/${activeOrganization.id}/billing/plan`,
   )
     .then((data: BillingSnapshot) => ({
@@ -141,21 +144,24 @@ export default async function OrganizationSettingsPage({
     { data: invitationData, error: invitationError },
     billingState,
   ] = await Promise.all([
-    authClient.organization.getActiveMemberRole({
+    serverOrgClient.getActiveMemberRole({
       query: {
         organizationId: activeOrganization.id,
       },
     }),
     membersPromise,
-    authClient.organization.listInvitations({
+    serverOrgClient.listInvitations({
       query: {
         organizationId: activeOrganization.id,
       },
     }),
     billingPromise,
   ])
-  const currentBillingPlan = billingState.data?.plan ?? "free"
-  const memberCap = billingState.data?.entitlements.memberCap ?? null
+  const currentBillingPlan = (billingState.data?.plan ?? "free") as
+    | "free"
+    | "pro"
+    | "studio"
+  const memberCap = billingState.data?.entitlements?.memberCap ?? null
 
   const members = (membersData?.members ?? []).map(
     (member: OrganizationMember) => ({

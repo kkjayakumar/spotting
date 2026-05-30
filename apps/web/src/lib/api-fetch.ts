@@ -1,5 +1,4 @@
 import { API_BASE_URL } from "@/lib/api-base-url";
-import { readSessionToken } from "@/lib/read-session-token";
 
 type IncomingRequestHeaders = Pick<Headers, "get">;
 
@@ -30,7 +29,7 @@ function readTokenFromCookieHeader(cookieHeader: string | null): string | null {
   }
 }
 
-/** Build Authorization headers for browser or RSC (reads HttpOnly session cookie on server). */
+/** Build Authorization headers for browser requests (localStorage / document.cookie). */
 export async function buildAuthHeaders(
   init?: HeadersInit,
   incoming?: IncomingRequestHeaders,
@@ -47,9 +46,6 @@ export async function buildAuthHeaders(
   let token = resolveBrowserAuthToken();
   if (!token) {
     token = readTokenFromCookieHeader(incoming?.get("cookie") ?? null);
-  }
-  if (!token && typeof window === "undefined") {
-    token = await readSessionToken();
   }
 
   if (token) {

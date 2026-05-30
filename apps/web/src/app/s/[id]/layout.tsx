@@ -1,9 +1,8 @@
 import { reportNonFatalError } from "@spotting/shared/lib/errors"
 import type { Metadata } from "next"
-import { headers } from "next/headers"
 import type { ReactNode } from "react"
 
-import { fetchApiWithRequestHeaders } from "@/lib/api"
+import { fetchServerApi } from "@/lib/server-api-fetch"
 
 interface BugReportLayoutProps {
   children: ReactNode
@@ -20,10 +19,9 @@ export async function generateMetadata({
   }
 
   try {
-    const requestHeaders = await headers()
-    const report = (await fetchApiWithRequestHeaders(`/v1/reports/${id}`, {
-      headers: requestHeaders,
-    })) as { title?: string } | null
+    const report = (await fetchServerApi(`/v1/reports/${id}`)) as {
+      title?: string
+    } | null
 
     if (!report?.title?.trim()) {
       return { title: "Bug Report" }

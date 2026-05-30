@@ -1,3 +1,5 @@
+import "server-only"
+
 import { cookies, headers } from "next/headers"
 
 export function readTokenFromCookieHeader(cookieHeader: string | null): string | null {
