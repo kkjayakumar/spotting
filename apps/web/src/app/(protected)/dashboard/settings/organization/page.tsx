@@ -11,7 +11,8 @@ import { headers } from "next/headers"
 import { redirect } from "next/navigation"
 
 import { getProtectedAuthData } from "@/app/(protected)/_lib/get-protected-auth-data"
-import { client } from "@/lib/api"
+import { billingClient } from "@/lib/api/billing"
+import { fetchApiWithRequestHeaders } from "@/lib/api-fetch"
 
 import { OrganizationMembersSection } from "../_components/org-members/organization-members-section"
 import { OrganizationDangerZone } from "../_components/organization-danger-zone"
@@ -39,7 +40,7 @@ type OrganizationMember = NonNullable<
   NonNullable<MembersListResult["data"]>["members"]
 >[number]
 type BillingSnapshot = Awaited<
-  ReturnType<typeof client.billing.getCurrentOrganizationPlan>
+  ReturnType<typeof billingClient.getCurrentOrganizationPlan>
 >
 function toIsoString(value: Date | string): string {
   return value instanceof Date ? value.toISOString() : value
@@ -65,12 +66,6 @@ export default async function OrganizationSettingsPage({
       (organization) => organization.id === session.session.activeOrganizationId
     ) ?? organizations[0]
 
-  const requestHeaders = await headers()
-  const authFetchOptions = {
-    fetchOptions: {
-      headers: requestHeaders,
-    },
-  }
   const membersListQuery: MembersListQuery = {
     organizationId: activeOrganization.id,
     limit: membersQuery.perPage,
@@ -88,7 +83,6 @@ export default async function OrganizationSettingsPage({
               limit: 1,
               offset: 0,
             },
-            ...authFetchOptions,
           })
         if (initialMembersResponse.error || !initialMembersResponse.data) {
           return initialMembersResponse
@@ -100,7 +94,6 @@ export default async function OrganizationSettingsPage({
             limit: Math.max(1, initialMembersResponse.data.total),
             offset: 0,
           },
-          ...authFetchOptions,
         })
         if (fullMembersResponse.error || !fullMembersResponse.data) {
           return fullMembersResponse
@@ -128,15 +121,15 @@ export default async function OrganizationSettingsPage({
       })()
     : authClient.organization.listMembers({
         query: membersListQuery,
-        ...authFetchOptions,
       })
+  const requestHeaders = await headers()
   const billingPromise: Promise<{
     data: BillingSnapshot | null
     error: unknown
-  }> = client.billing
-    .getCurrentOrganizationPlan({
-      organizationId: activeOrganization.id,
-    })
+  }> = fetchApiWithRequestHeaders(
+    `/v1/orgs/${activeOrganization.id}/billing/plan`,
+    { headers: requestHeaders },
+  )
     .then((data: BillingSnapshot) => ({
       data,
       error: null,
@@ -155,14 +148,12 @@ export default async function OrganizationSettingsPage({
       query: {
         organizationId: activeOrganization.id,
       },
-      ...authFetchOptions,
     }),
     membersPromise,
     authClient.organization.listInvitations({
       query: {
         organizationId: activeOrganization.id,
       },
-      ...authFetchOptions,
     }),
     billingPromise,
   ])

@@ -1,38 +1,15 @@
 import { API_BASE_URL } from "@/lib/api-base-url";
+import { buildAuthHeaders } from "@/lib/api-fetch";
 
-async function orgFetchApi(path: string, options: any = {}) {
-  const headers = new Headers(options.headers);
-  headers.set("Content-Type", "application/json");
-
-  let token = null;
-  if (typeof window !== "undefined") {
-    try {
-      token = localStorage.getItem("spotting_token");
-    } catch (e) {}
-  }
-
-  if (!token && headers.has("Authorization")) {
-    token = headers.get("Authorization")?.replace("Bearer ", "");
-  }
-
-  if (!token) {
-    let cookieString = "";
-    if (typeof window !== "undefined") {
-      cookieString = document.cookie;
-    } else if (options.headers) {
-      const h = new Headers(options.headers);
-      cookieString = h.get("cookie") || "";
-    }
-    const match = cookieString.match(/spotting_token=([^;]+)/);
-    if (match) token = match[1];
-  }
-
-  if (token) headers.set("Authorization", `Bearer ${token}`);
+async function orgFetchApi(path: string, options: RequestInit = {}) {
+  const headers = await buildAuthHeaders(options.headers);
 
   try {
     const response = await fetch(`${API_BASE_URL}${path}`, {
-      ...options,
+      method: options.method,
+      body: options.body,
       headers,
+      ...(typeof window === "undefined" ? { cache: "no-store" as const } : {}),
     });
 
     if (!response.ok) {
@@ -40,7 +17,9 @@ async function orgFetchApi(path: string, options: any = {}) {
       try {
         const data = await response.json();
         message = data.error?.message || data.message || message;
-      } catch {}
+      } catch {
+        /* ignore */
+      }
       return { data: null, error: { message } };
     }
 
@@ -50,8 +29,10 @@ async function orgFetchApi(path: string, options: any = {}) {
     } catch {
       return { data: null, error: null };
     }
-  } catch (error: any) {
-    return { data: null, error: { message: error.message || "Network error" } };
+  } catch (error: unknown) {
+    const message =
+      error instanceof Error ? error.message : "Network error";
+    return { data: null, error: { message } };
   }
 }
 
@@ -62,9 +43,7 @@ export const orgClient = {
     if (!orgId) {
       return { data: null, error: { message: "organizationId is required" } };
     }
-    const res = await orgFetchApi(`/v1/orgs/${orgId}/members`, {
-      ...(payload?.fetchOptions ?? {}),
-    });
+    const res = await orgFetchApi(`/v1/orgs/${orgId}/members`);
     if (res.error) {
       return { data: null, error: res.error };
     }
@@ -93,9 +72,7 @@ export const orgClient = {
     if (!orgId) {
       return { data: null, error: { message: "organizationId is required" } };
     }
-    const res = await orgFetchApi(`/v1/orgs/${orgId}/invites`, {
-      ...(payload?.fetchOptions ?? {}),
-    });
+    const res = await orgFetchApi(`/v1/orgs/${orgId}/invites`);
     if (res.error) {
       return { data: null, error: res.error };
     }

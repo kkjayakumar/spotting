@@ -2,18 +2,9 @@ import { useQuery } from "@tanstack/react-query";
 
 import { API_BASE_URL } from "@/lib/api-base-url";
 import { finishAuthRedirect, syncSessionCookie } from "@/lib/auth-redirect";
+import { buildAuthHeaders } from "@/lib/api-fetch";
 
 import { orgClient } from "./orgs";
-
-function readCookieToken(cookieString: string): string | null {
-  const match = cookieString.match(/(?:^|;\s*)spotting_token=([^;]+)/);
-  if (!match?.[1]) return null;
-  try {
-    return decodeURIComponent(match[1]);
-  } catch {
-    return match[1];
-  }
-}
 
 async function persistSessionToken(token: string): Promise<void> {
   try {
@@ -55,38 +46,13 @@ async function clearSessionToken(): Promise<void> {
 }
 
 async function fetchApi(path: string, options: any = {}) {
-  const headers = new Headers(options.headers);
-  headers.set("Content-Type", "application/json");
-
-  let token = null;
-  if (typeof window !== "undefined") {
-    try {
-      token = localStorage.getItem("spotting_token");
-    } catch (e) {}
-  }
-
-  if (!token && headers.has("Authorization")) {
-    token = headers.get("Authorization")?.replace("Bearer ", "") ?? null;
-  }
-
-  if (!token) {
-    let cookieString = "";
-    if (typeof window !== "undefined") {
-      cookieString = document.cookie;
-    } else if (options.headers) {
-      const h = new Headers(options.headers);
-      cookieString = h.get("cookie") || "";
-    }
-    token = readCookieToken(cookieString);
-  }
-
-  if (token) headers.set("Authorization", `Bearer ${token}`);
+  const headers = await buildAuthHeaders(options.headers);
 
   try {
     const response = await fetch(`${API_BASE_URL}${path}`, {
-      ...options,
+      method: options.method,
+      body: options.body,
       headers,
-      // SSR must not cache authenticated API responses (Next.js defaults to caching GET).
       ...(typeof window === "undefined" ? { cache: "no-store" as const } : {}),
     });
 

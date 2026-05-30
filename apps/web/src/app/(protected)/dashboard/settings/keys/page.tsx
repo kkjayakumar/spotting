@@ -39,19 +39,11 @@ export default async function PublicKeysSettingsPage() {
       (organization) => organization.id === session.session.activeOrganizationId
     ) ?? organizations[0]
 
-  const requestHeaders = await headers()
-  const authFetchOptions = {
-    fetchOptions: {
-      headers: requestHeaders,
-    },
-  }
-
   const { data: memberRoleData } =
     await authClient.organization.getActiveMemberRole({
       query: {
         organizationId: activeOrganization.id,
       },
-      ...authFetchOptions,
     })
 
   const canManage =

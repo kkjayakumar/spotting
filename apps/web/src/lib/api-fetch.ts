@@ -1,6 +1,63 @@
 import { API_BASE_URL } from "@/lib/api-base-url";
+import { readSessionToken } from "@/lib/read-session-token";
 
 type IncomingRequestHeaders = Pick<Headers, "get">;
+
+function resolveBrowserAuthToken(): string | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+  try {
+    const fromStorage = localStorage.getItem("spotting_token");
+    if (fromStorage) {
+      return fromStorage;
+    }
+  } catch {
+    /* ignore */
+  }
+  const match = document.cookie.match(/(?:^|;\s*)spotting_token=([^;]+)/);
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
+function readTokenFromCookieHeader(cookieHeader: string | null): string | null {
+  if (!cookieHeader) return null;
+  const match = cookieHeader.match(/(?:^|;\s*)spotting_token=([^;]+)/);
+  if (!match?.[1]) return null;
+  try {
+    return decodeURIComponent(match[1]);
+  } catch {
+    return match[1];
+  }
+}
+
+/** Build Authorization headers for browser or RSC (reads HttpOnly session cookie on server). */
+export async function buildAuthHeaders(
+  init?: HeadersInit,
+  incoming?: IncomingRequestHeaders,
+): Promise<Headers> {
+  const headers = new Headers(init);
+  if (!headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
+  }
+
+  if (headers.has("Authorization")) {
+    return headers;
+  }
+
+  let token = resolveBrowserAuthToken();
+  if (!token) {
+    token = readTokenFromCookieHeader(incoming?.get("cookie") ?? null);
+  }
+  if (!token && typeof window === "undefined") {
+    token = await readSessionToken();
+  }
+
+  if (token) {
+    headers.set("Authorization", `Bearer ${token}`);
+  }
+
+  return headers;
+}
 
 /** RSC / server: pass `headers()` from `next/headers` so the session cookie is forwarded. */
 export async function fetchApiWithRequestHeaders(
@@ -9,24 +66,12 @@ export async function fetchApiWithRequestHeaders(
     headers?: IncomingRequestHeaders;
   } = {},
 ) {
-  const headers = new Headers();
-  headers.set("Content-Type", "application/json");
-  const cookieHeader = options.headers?.get("cookie") ?? "";
-  if (cookieHeader.length > 0) {
-    headers.set("Cookie", cookieHeader);
-  }
-  if (!headers.has("Authorization")) {
-    const match = cookieHeader.match(/spotting_token=([^;]+)/);
-    if (match) {
-      headers.set(
-        "Authorization",
-        `Bearer ${decodeURIComponent(match[1])}`,
-      );
-    }
-  }
+  const headers = await buildAuthHeaders(undefined, options.headers);
   const response = await fetch(`${API_BASE_URL}${path}`, {
-    ...options,
+    method: options.method,
+    body: options.body,
     headers,
+    cache: "no-store",
   });
   if (!response.ok) {
     let message = "Request failed";
@@ -47,35 +92,16 @@ export async function fetchApiWithRequestHeaders(
   }
 }
 
-function resolveBrowserAuthToken(): string | null {
-  if (typeof window === "undefined") {
-    return null;
-  }
-  try {
-    const fromStorage = localStorage.getItem("spotting_token");
-    if (fromStorage) {
-      return fromStorage;
-    }
-  } catch {
-    /* ignore */
-  }
-  const match = document.cookie.match(/spotting_token=([^;]+)/);
-  return match ? decodeURIComponent(match[1]) : null;
-}
-
 export async function fetchApi(path: string, options: RequestInit = {}) {
-  const headers = new Headers(options.headers);
-  headers.set("Content-Type", "application/json");
-
-  const token = resolveBrowserAuthToken();
-  if (token) {
-    headers.set("Authorization", `Bearer ${token}`);
-  }
+  const headers = await buildAuthHeaders(options.headers);
+  const token = headers.get("Authorization")?.replace(/^Bearer\s+/i, "") ?? null;
 
   const response = await fetch(`${API_BASE_URL}${path}`, {
-    ...options,
+    method: options.method,
+    body: options.body,
     headers,
     credentials: token ? "omit" : "include",
+    ...(typeof window === "undefined" ? { cache: "no-store" as const } : {}),
   });
 
   if (!response.ok) {
