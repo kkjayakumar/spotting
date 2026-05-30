@@ -86,6 +86,8 @@ async function fetchApi(path: string, options: any = {}) {
     const response = await fetch(`${API_BASE_URL}${path}`, {
       ...options,
       headers,
+      // SSR must not cache authenticated API responses (Next.js defaults to caching GET).
+      ...(typeof window === "undefined" ? { cache: "no-store" as const } : {}),
     });
 
     if (!response.ok) {

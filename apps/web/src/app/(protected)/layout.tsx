@@ -3,6 +3,8 @@ import { redirect } from "next/navigation"
 
 import { getProtectedAuthData } from "@/app/(protected)/_lib/get-protected-auth-data"
 
+export const dynamic = "force-dynamic"
+
 const sansFont = Plus_Jakarta_Sans({
   subsets: ["latin"],
   variable: "--font-google-sans",
