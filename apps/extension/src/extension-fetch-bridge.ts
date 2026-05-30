@@ -6,16 +6,9 @@ import { sendApiFetch } from "./api-proxy";
 
 let installed = false;
 
-/** Only proxy when the page cannot call the API directly (HTTPS page → HTTP API). */
-function needsExtensionFetchProxy(url: string): boolean {
-  if (typeof window === "undefined" || window.location.protocol !== "https:") {
-    return false;
-  }
-  try {
-    return new URL(url).protocol === "http:";
-  } catch {
-    return false;
-  }
+/** Extension background fetch bypasses page CORS (widget runs on third-party origins). */
+function shouldProxyThroughExtension(_url: string): boolean {
+  return true;
 }
 
 function headersToRecord(headers: HeadersInit | undefined): Record<string, string> {
@@ -50,7 +43,7 @@ export function installExtensionFetchBridge() {
   installed = true;
 
   setCaptureFetchTransport(async (url: string, init: RequestInit) => {
-    if (!needsExtensionFetchProxy(url)) {
+    if (!shouldProxyThroughExtension(url)) {
       return fetch(url, init);
     }
 

@@ -48,18 +48,33 @@ logger.info("service_starting", {
   emailConfigured: isEmailConfigured(),
 });
 
+const dashboardOrigins = [
+  "http://localhost:3001",
+  "http://localhost:3003",
+  "http://127.0.0.1:3001",
+  "http://127.0.0.1:3003",
+  ...(process.env.CORS_ORIGINS?.split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean) ?? []),
+];
+
+function isCapturePublicPath(path: string): boolean {
+  return path === "/v1/capture" || path.startsWith("/v1/capture/");
+}
+
 app.use(
   "*",
   cors({
-    origin: [
-      "http://localhost:3001",
-      "http://localhost:3003",
-      "http://127.0.0.1:3001",
-      "http://127.0.0.1:3003",
-      ...(process.env.CORS_ORIGINS?.split(",")
-        .map((origin) => origin.trim())
-        .filter(Boolean) ?? []),
-    ],
+    origin: (origin, c) => {
+      // Widget + extension run on customer sites (github.com, etc.); capture uses spk_ keys.
+      if (isCapturePublicPath(c.req.path)) {
+        return origin ?? "*";
+      }
+      if (!origin) {
+        return dashboardOrigins[0] ?? null;
+      }
+      return dashboardOrigins.includes(origin) ? origin : null;
+    },
     allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowHeaders: [
       "Content-Type",
