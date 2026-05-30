@@ -45,7 +45,9 @@ export async function buildAuthHeaders(
 
   let token = resolveBrowserAuthToken();
   if (!token) {
-    token = readTokenFromCookieHeader(incoming?.get("cookie") ?? null);
+    token = readTokenFromCookieHeader(
+      incoming?.get("cookie") ?? headers.get("cookie"),
+    );
   }
 
   if (token) {

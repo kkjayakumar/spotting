@@ -48,15 +48,8 @@ async function clearSessionToken(): Promise<void> {
 async function fetchApi(path: string, options: any = {}) {
   const rawHeaders = options.headers;
   const incoming =
-    rawHeaders &&
-    typeof rawHeaders.get === "function" &&
-    !(rawHeaders instanceof Headers)
-      ? rawHeaders
-      : undefined;
-  const headers = await buildAuthHeaders(
-    incoming ? undefined : rawHeaders,
-    incoming,
-  );
+    rawHeaders && typeof rawHeaders.get === "function" ? rawHeaders : undefined;
+  const headers = await buildAuthHeaders(undefined, incoming);
 
   try {
     const response = await fetch(`${API_BASE_URL}${path}`, {

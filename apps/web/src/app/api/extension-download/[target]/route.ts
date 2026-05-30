@@ -1,5 +1,3 @@
-import { authClient } from "@spotting/auth/client"
-import { headers } from "next/headers"
 import JSZip from "jszip"
 import { createReadStream } from "node:fs"
 import { readdir, readFile } from "node:fs/promises"
@@ -13,6 +11,7 @@ import {
   resolveExtensionTargetDir,
   type ExtensionTarget,
 } from "@/lib/extension-dist"
+import { fetchServerApi } from "@/lib/server-api-fetch"
 
 async function addDirectoryToZip(
   zip: JSZip,
@@ -97,11 +96,12 @@ export async function GET(
     return NextResponse.json({ error: "Invalid browser target." }, { status: 400 })
   }
 
-  const h = await headers()
-  const { data: session } = await authClient.getSession({
-    fetchOptions: { headers: h },
-  })
-  if (!session) {
+  try {
+    const session = (await fetchServerApi("/v1/auth/me")) as { id?: string } | null
+    if (!session?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+  } catch {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 

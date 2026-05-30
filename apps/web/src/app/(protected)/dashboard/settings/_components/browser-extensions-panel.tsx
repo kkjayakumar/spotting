@@ -24,6 +24,14 @@ type BrowserExtensionCardConfig = {
   installSteps: ReactNode
 }
 
+function readBrowserAuthToken(): string | null {
+  try {
+    return localStorage.getItem("spotting_token")
+  } catch {
+    return null
+  }
+}
+
 function BrowserExtensionCard({
   title,
   description,
@@ -35,8 +43,10 @@ function BrowserExtensionCard({
 }: BrowserExtensionCardConfig) {
   const handleDownload = async () => {
     try {
+      const token = readBrowserAuthToken()
       const res = await fetch(`/api/extension-download/${target}`, {
         credentials: "include",
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
       })
       if (res.status === 401) {
         toast.error("Sign in again to download the extension.")
