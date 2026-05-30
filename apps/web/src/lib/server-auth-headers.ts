@@ -1,28 +1,20 @@
-import { cookies, headers } from "next/headers"
+import { headers } from "next/headers"
 
-function readTokenFromCookieHeader(cookieHeader: string | null): string | null {
-  if (!cookieHeader) return null
-  const match = cookieHeader.match(/(?:^|;\s*)spotting_token=([^;]+)/)
-  return match?.[1] ?? null
-}
+import { readSessionToken } from "@/lib/read-session-token"
 
-/** Headers for server-side API calls; forwards session from the spotting_token cookie. */
+/** Minimal headers for server-side API calls (do not forward Host / browser headers). */
 export async function getServerAuthHeaders(): Promise<Headers> {
-  const requestHeaders = await headers()
-  const cookieStore = await cookies()
   const authHeaders = new Headers()
+  authHeaders.set("Content-Type", "application/json")
 
-  requestHeaders.forEach((value, key) => {
-    authHeaders.set(key, value)
-  })
-
-  const token =
-    cookieStore.get("spotting_token")?.value ??
-    readTokenFromCookieHeader(requestHeaders.get("cookie")) ??
-    requestHeaders.get("authorization")?.replace(/^Bearer\s+/i, "")
-
+  const token = await readSessionToken()
   if (token) {
     authHeaders.set("Authorization", `Bearer ${token}`)
+  }
+
+  const cookie = (await headers()).get("cookie")
+  if (cookie) {
+    authHeaders.set("Cookie", cookie)
   }
 
   return authHeaders
