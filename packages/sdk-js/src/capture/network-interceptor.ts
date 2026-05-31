@@ -21,23 +21,80 @@ function push(entry: NetworkLogEntry) {
   }
 }
 
-/** Merge an entry from the page-world injected script. */
+// --- skip-list + header sanitization (configured from SDK init) ---
+let ignorePrefixes: string[] = [];
+
+/** Configure URLs to skip (e.g. Spotting's own API/dashboard) so capture isn't self-polluted. */
+export function configureNetworkCapture(opts: { ignoreUrlPrefixes?: string[] }) {
+  ignorePrefixes = (opts.ignoreUrlPrefixes ?? []).filter(Boolean);
+}
+
+function shouldIgnore(url: string | undefined): boolean {
+  if (!url) return true;
+  if (url.startsWith("data:") || url.startsWith("blob:")) return true;
+  return ignorePrefixes.some((prefix) => url.startsWith(prefix));
+}
+
+const SENSITIVE_HEADERS = new Set([
+  "authorization",
+  "cookie",
+  "set-cookie",
+  "proxy-authorization",
+  "x-api-key",
+  "x-auth-token",
+  "x-csrf-token",
+  "x-xsrf-token",
+]);
+
+// Keep only a small, useful subset of headers ("less capture").
+const KEEP_HEADERS = new Set([
+  "content-type",
+  "content-length",
+  "content-encoding",
+  "content-language",
+  "content-disposition",
+  "cache-control",
+  "accept",
+  "accept-encoding",
+  "accept-language",
+  "origin",
+  "referer",
+  "host",
+  "date",
+  "server",
+  "etag",
+  "vary",
+  "location",
+  "x-request-id",
+  "x-powered-by",
+  "access-control-allow-origin",
+]);
+
+function sanitizeHeaders(h?: Record<string, string>): Record<string, string> | undefined {
+  if (!h) return h;
+  const out: Record<string, string> = {};
+  for (const key of Object.keys(h)) {
+    const lower = key.toLowerCase();
+    if (SENSITIVE_HEADERS.has(lower) || !KEEP_HEADERS.has(lower)) continue;
+    out[key] = h[key];
+  }
+  return out;
+}
+
+/** Single sink: drop ignored/own traffic, trim headers, then buffer. */
+function record(entry: NetworkLogEntry) {
+  if (shouldIgnore(entry.url)) return;
+  push({
+    ...entry,
+    requestHeaders: sanitizeHeaders(entry.requestHeaders),
+    responseHeaders: sanitizeHeaders(entry.responseHeaders),
+  });
+}
+
+/** Merge an entry from the page-world injected script (all network types). */
 export function pushNetworkEntry(entry: NetworkLogEntry) {
   if (!entry?.id || !entry.url) return;
-  push({
-    id: entry.id,
-    t: entry.t,
-    type: entry.type === "xhr" ? "xhr" : "fetch",
-    method: entry.method,
-    url: entry.url,
-    status: entry.status,
-    durationMs: entry.durationMs,
-    error: entry.error,
-    requestHeaders: entry.requestHeaders,
-    responseHeaders: entry.responseHeaders,
-    requestBody: entry.requestBody,
-    responseBody: entry.responseBody,
-  });
+  record(entry);
 }
 
 function headersToRecord(h: Headers): Record<string, string> {
@@ -60,9 +117,64 @@ export function clearNetworkLog() {
   buffer = [];
 }
 
+function mapInitiatorType(initiatorType: string): NetworkLogEntry["type"] {
+  switch (initiatorType) {
+    case "script":
+      return "script";
+    case "css":
+    case "link":
+      return "css";
+    case "img":
+    case "image":
+    case "imageset":
+      return "img";
+    case "video":
+    case "audio":
+    case "track":
+      return "media";
+    case "font":
+      return "font";
+    case "iframe":
+    case "frame":
+    case "navigation":
+      return "doc";
+    default:
+      return "other";
+  }
+}
+
+/** Capture ALL other resources (scripts, css, images, fonts, …) via Resource Timing. */
+function installResourceObserver() {
+  if (typeof PerformanceObserver === "undefined") return;
+  try {
+    const observer = new PerformanceObserver((list) => {
+      for (const item of list.getEntries()) {
+        const resource = item as PerformanceResourceTiming;
+        const initiator = resource.initiatorType;
+        // fetch/xhr are captured richly (headers/body) by the interceptors above.
+        if (initiator === "fetch" || initiator === "xmlhttprequest") continue;
+        record({
+          id: nextId(),
+          t: Date.now(),
+          type: mapInitiatorType(initiator),
+          method: "GET",
+          url: resource.name,
+          status: (resource as unknown as { responseStatus?: number }).responseStatus,
+          durationMs: Math.round(resource.duration),
+        });
+      }
+    });
+    observer.observe({ type: "resource", buffered: true });
+  } catch {
+    /* resource timing unavailable */
+  }
+}
+
 export function installNetworkInterceptor() {
   if (installed || typeof window === "undefined") return;
   installed = true;
+
+  installResourceObserver();
 
   const origFetch = window.fetch.bind(window);
   window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -95,7 +207,7 @@ export function installNetworkInterceptor() {
       const res = await origFetch(input, init);
       status = res.status;
       const responseBody = await readNetworkResponseBody(res);
-      push({
+      record({
         id: nextId(),
         t: Date.now(),
         type: "fetch",
@@ -111,7 +223,7 @@ export function installNetworkInterceptor() {
       return res;
     } catch (e) {
       error = e instanceof Error ? e.message : String(e);
-      push({
+      record({
         id: nextId(),
         t: Date.now(),
         type: "fetch",
@@ -211,7 +323,7 @@ export function installNetworkInterceptor() {
       } catch {
         responseBody = undefined;
       }
-      push({
+      record({
         id: nextId(),
         t: Date.now(),
         type: "xhr",
@@ -227,7 +339,7 @@ export function installNetworkInterceptor() {
     };
 
     const onErr = () => {
-      push({
+      record({
         id: nextId(),
         t: Date.now(),
         type: "xhr",

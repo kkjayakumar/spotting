@@ -10,6 +10,7 @@ export type {
 
 import type { SpottingInitOptions } from "./types";
 import { setCaptureFetchTransport } from "./capture/extension-fetch";
+import { configureNetworkCapture } from "./capture/network-interceptor";
 import {
   ensureCapturePipelineReady,
   installPageCaptureBridge,
@@ -48,6 +49,12 @@ export type { PendingCaptureState, WidgetRecordingState } from "./ui/widget";
  * Mount the floating capture widget and start network/console interception.
  */
 export function init(options: SpottingInitOptions): void {
+  // Skip Spotting's own API/dashboard traffic so the capture isn't self-polluted.
+  configureNetworkCapture({
+    ignoreUrlPrefixes: [options.apiBaseUrl, options.dashboardUrl].filter(
+      (value): value is string => Boolean(value)
+    ),
+  });
   mountWidget(options);
 }
 

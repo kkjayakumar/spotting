@@ -351,5 +351,57 @@
     return origSend.call(this, body);
   };
 
+  // Capture ALL other resources (scripts, css, images, fonts, docs, …) via Resource Timing.
+  function mapInitiatorType(initiatorType: string): string {
+    switch (initiatorType) {
+      case "script":
+        return "script";
+      case "css":
+      case "link":
+        return "css";
+      case "img":
+      case "image":
+      case "imageset":
+        return "img";
+      case "video":
+      case "audio":
+      case "track":
+        return "media";
+      case "font":
+        return "font";
+      case "iframe":
+      case "frame":
+      case "navigation":
+        return "doc";
+      default:
+        return "other";
+    }
+  }
+
+  try {
+    if (typeof PerformanceObserver !== "undefined") {
+      const resourceObserver = new PerformanceObserver((list) => {
+        for (const item of list.getEntries()) {
+          const resource = item as PerformanceResourceTiming;
+          const initiator = resource.initiatorType;
+          // fetch/xhr already captured richly (headers/body) above.
+          if (initiator === "fetch" || initiator === "xmlhttprequest") continue;
+          emit("network", {
+            id: nextId("r"),
+            t: Date.now(),
+            type: mapInitiatorType(initiator),
+            method: "GET",
+            url: resource.name,
+            status: (resource as unknown as { responseStatus?: number }).responseStatus,
+            durationMs: Math.round(resource.duration),
+          });
+        }
+      });
+      resourceObserver.observe({ type: "resource", buffered: true });
+    }
+  } catch {
+    /* resource timing unavailable */
+  }
+
   emit("ready", { t: Date.now() });
 })();

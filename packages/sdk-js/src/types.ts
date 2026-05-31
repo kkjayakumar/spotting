@@ -1,7 +1,18 @@
+export type NetworkResourceType =
+  | "fetch"
+  | "xhr"
+  | "script"
+  | "css"
+  | "img"
+  | "media"
+  | "font"
+  | "doc"
+  | "other";
+
 export interface NetworkLogEntry {
   id: string;
   t: number;
-  type: "fetch" | "xhr";
+  type: NetworkResourceType;
   method: string;
   url: string;
   status?: number;
