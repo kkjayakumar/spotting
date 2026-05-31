@@ -8,14 +8,20 @@
 
 import { reportNonFatalError } from "@spotting/shared/lib/errors"
 import { Input } from "@spotting/ui/components/ui/input"
-import {
-  ResizableHandle,
-  ResizablePanel,
-  ResizablePanelGroup,
-} from "@spotting/ui/components/ui/resizable"
 import { useDebouncedCallback } from "@spotting/ui/hooks/use-debounced-callback"
 import { cn } from "@spotting/ui/lib/utils"
-import { Search } from "lucide-react"
+import {
+  Braces,
+  Cable,
+  File as FileIcon,
+  FileCode,
+  FileText,
+  Image as ImageIcon,
+  type LucideIcon,
+  Palette,
+  Search,
+  Type as TypeIcon,
+} from "lucide-react"
 import { parseAsString, useQueryState } from "nuqs"
 import { useEffect, useMemo, useRef, useState } from "react"
 
@@ -26,16 +32,12 @@ import {
   deriveRequestType,
   formatResponseSize,
   networkRequestName,
-  networkTypeDotClass,
   networkTypeLabel,
   safeParseUrl,
   statusTone,
   type NetworkTypeCategory,
 } from "./utils"
 
-const REQUEST_LIST_DEFAULT_HEIGHT = "320px"
-const REQUEST_LIST_MIN_HEIGHT = "190px"
-const DETAILS_MIN_HEIGHT = "200px"
 const SEARCH_DEBOUNCE_MS = 500
 
 type TypeChip = { id: "all" | NetworkTypeCategory; label: string }
@@ -51,6 +53,17 @@ const TYPE_CHIPS: TypeChip[] = [
   { id: "doc", label: "Doc" },
   { id: "other", label: "Other" },
 ]
+
+const TYPE_META: Record<NetworkTypeCategory, { Icon: LucideIcon; color: string }> = {
+  "fetch-xhr": { Icon: Braces, color: "text-violet-500" },
+  ws: { Icon: Cable, color: "text-pink-500" },
+  js: { Icon: FileCode, color: "text-amber-500" },
+  css: { Icon: Palette, color: "text-blue-500" },
+  media: { Icon: ImageIcon, color: "text-emerald-500" },
+  font: { Icon: TypeIcon, color: "text-purple-400" },
+  doc: { Icon: FileText, color: "text-sky-400" },
+  other: { Icon: FileIcon, color: "text-muted-foreground" },
+}
 
 export function NetworkInspectorPanel({
   bugReportId,
@@ -70,6 +83,7 @@ export function NetworkInspectorPanel({
   )
   const [typeFilter, setTypeFilter] = useState<"all" | NetworkTypeCategory>("all")
   const [errorsOnly, setErrorsOnly] = useState(false)
+  const [detailOpen, setDetailOpen] = useState(false)
   const searchInputRef = useRef<HTMLInputElement | null>(null)
   const listContainerRef = useRef<HTMLDivElement | null>(null)
   const loadMoreRef = useRef<HTMLDivElement | null>(null)
@@ -254,12 +268,8 @@ export function NetworkInspectorPanel({
         ))}
       </div>
 
-      <ResizablePanelGroup className="min-h-0 flex-1" orientation="vertical">
-        <ResizablePanel
-          defaultSize={REQUEST_LIST_DEFAULT_HEIGHT}
-          minSize={REQUEST_LIST_MIN_HEIGHT}
-        >
-          <div className="h-full overflow-auto bg-background" ref={listContainerRef}>
+      <div className="relative min-h-0 flex-1">
+        <div className="h-full overflow-auto bg-background" ref={listContainerRef}>
             {filteredRows.length === 0 ? (
               <EmptyState message={emptyStateMessage} />
             ) : (
@@ -307,7 +317,10 @@ export function NetworkInspectorPanel({
                       )}
                       data-entry-id={entry.id}
                       key={entry.id}
-                      onClick={() => onEntrySelect(entry)}
+                      onClick={() => {
+                        onEntrySelect(entry)
+                        setDetailOpen(true)
+                      }}
                       type="button"
                     >
                       <div className="w-8 shrink-0 pr-2 text-right text-muted-foreground">
@@ -317,12 +330,10 @@ export function NetworkInspectorPanel({
                         className="flex w-[180px] shrink-0 items-center gap-1.5 truncate pr-2 font-medium"
                         title={fullUrl}
                       >
-                        <span
-                          className={cn(
-                            "size-2 shrink-0 rounded-[3px]",
-                            networkTypeDotClass(category)
-                          )}
-                        />
+                        {(() => {
+                          const TypeGlyph = TYPE_META[category].Icon
+                          return <TypeGlyph className={cn("size-3.5 shrink-0", TYPE_META[category].color)} />
+                        })()}
                         <span className="truncate">{name}</span>
                       </div>
                       <div className="w-14 shrink-0 pr-1 text-muted-foreground">
@@ -380,19 +391,17 @@ export function NetworkInspectorPanel({
               </div>
             )}
           </div>
-        </ResizablePanel>
-        <ResizableHandle withHandle />
-
-        <ResizablePanel minSize={DETAILS_MIN_HEIGHT}>
-          <div className="h-full overflow-y-auto bg-muted/20 p-3">
+        {detailOpen && selectedRequest ? (
+          <div className="absolute inset-0 z-20 bg-background">
             <NetworkRequestDetails
               bugReportId={bugReportId}
               key={selectedEntry?.id ?? "empty"}
-              request={selectedRequest ?? null}
+              onClose={() => setDetailOpen(false)}
+              request={selectedRequest}
             />
           </div>
-        </ResizablePanel>
-      </ResizablePanelGroup>
+        ) : null}
+      </div>
     </div>
   )
 }
