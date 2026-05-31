@@ -9,6 +9,7 @@ export const INSPECTOR_TABS = [
   "actions",
   "console",
   "network",
+  "backend",
 ] as const
 
 export type InspectorTab = (typeof INSPECTOR_TABS)[number]

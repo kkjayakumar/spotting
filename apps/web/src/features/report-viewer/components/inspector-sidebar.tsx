@@ -7,7 +7,7 @@
 "use client"
 
 import { cn } from "@spotting/ui/lib/utils"
-import { GlobeIcon, InfoIcon, MousePointerClickIcon, TerminalIcon } from "lucide-react"
+import { GlobeIcon, InfoIcon, MousePointerClickIcon, ServerIcon, TerminalIcon } from "lucide-react"
 import type { ReactNode } from "react"
 
 import type { InspectorTab } from "../constants"
@@ -40,10 +40,11 @@ const TAB_CONFIG: Array<{
   label: string
   icon: ReactNode
 }> = [
-  { id: "details", label: "Details", icon: <InfoIcon className="size-3.5" /> },
-  { id: "actions", label: "Steps", icon: <MousePointerClickIcon className="size-3.5" /> },
+  { id: "details", label: "Info", icon: <InfoIcon className="size-3.5" /> },
   { id: "console", label: "Console", icon: <TerminalIcon className="size-3.5" /> },
   { id: "network", label: "Network", icon: <GlobeIcon className="size-3.5" /> },
+  { id: "actions", label: "Actions", icon: <MousePointerClickIcon className="size-3.5" /> },
+  { id: "backend", label: "Backend", icon: <ServerIcon className="size-3.5" /> },
 ]
 
 export function InspectorSidebar({
@@ -119,6 +120,16 @@ export function InspectorSidebar({
             requests={networkChannel.requests}
             selectedEntryId={networkChannel.selectedEntryId}
           />
+        ) : null}
+        {activeTab === "backend" ? (
+          <div className="flex h-full flex-col items-center justify-center gap-2 p-8 text-center">
+            <ServerIcon className="size-6 text-muted-foreground" />
+            <p className="font-medium text-foreground text-sm">No backend traces linked</p>
+            <p className="max-w-xs text-muted-foreground text-xs">
+              Connect your server's error tracker (e.g. an OpenTelemetry / Sentry exporter) to
+              correlate backend traces with this session. None are linked to this report yet.
+            </p>
+          </div>
         ) : null}
       </div>
     </aside>

@@ -1,7 +1,7 @@
 "use client"
 
 /**
- * Spotting network inspector panel.
+ * Spotting network inspector panel (devtools-style).
  * Copyright (C) 2026 KK Jayakumar
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
@@ -17,18 +17,40 @@ import { useDebouncedCallback } from "@spotting/ui/hooks/use-debounced-callback"
 import { cn } from "@spotting/ui/lib/utils"
 import { Search } from "lucide-react"
 import { parseAsString, useQueryState } from "nuqs"
-import { useEffect, useMemo, useRef } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 
-import { formatTimelineOffset } from "../../lib/format-time"
 import { NetworkRequestDetails } from "./network-request-details"
 import { EmptyState } from "./panel-sections"
 import type { NetworkRequestsPanelProps } from "./types"
-import { safeParseUrl, statusTone } from "./utils"
+import {
+  deriveRequestType,
+  formatResponseSize,
+  networkRequestName,
+  networkTypeDotClass,
+  networkTypeLabel,
+  safeParseUrl,
+  statusTone,
+  type NetworkTypeCategory,
+} from "./utils"
 
-const REQUEST_LIST_DEFAULT_HEIGHT = "300px"
+const REQUEST_LIST_DEFAULT_HEIGHT = "320px"
 const REQUEST_LIST_MIN_HEIGHT = "190px"
-const DETAILS_MIN_HEIGHT = "220px"
+const DETAILS_MIN_HEIGHT = "200px"
 const SEARCH_DEBOUNCE_MS = 500
+
+type TypeChip = { id: "all" | NetworkTypeCategory; label: string }
+
+const TYPE_CHIPS: TypeChip[] = [
+  { id: "all", label: "All" },
+  { id: "fetch-xhr", label: "Fetch/XHR" },
+  { id: "ws", label: "WS" },
+  { id: "js", label: "JS" },
+  { id: "css", label: "CSS" },
+  { id: "media", label: "Media" },
+  { id: "font", label: "Font" },
+  { id: "doc", label: "Doc" },
+  { id: "other", label: "Other" },
+]
 
 export function NetworkInspectorPanel({
   bugReportId,
@@ -46,17 +68,14 @@ export function NetworkInspectorPanel({
     "networkSearch",
     parseAsString
   )
+  const [typeFilter, setTypeFilter] = useState<"all" | NetworkTypeCategory>("all")
+  const [errorsOnly, setErrorsOnly] = useState(false)
   const searchInputRef = useRef<HTMLInputElement | null>(null)
   const listContainerRef = useRef<HTMLDivElement | null>(null)
   const loadMoreRef = useRef<HTMLDivElement | null>(null)
 
   const requestsById = useMemo(
-    () =>
-      new Map(
-        requests.map((request) => {
-          return [request.id, request] as const
-        })
-      ),
+    () => new Map(requests.map((request) => [request.id, request] as const)),
     [requests]
   )
 
@@ -87,12 +106,10 @@ export function NetworkInspectorPanel({
     if (!input) {
       return
     }
-
     const nextInputValue = searchParamValue ?? ""
     if (input.value === nextInputValue) {
       return
     }
-
     input.value = nextInputValue
   }, [searchParamValue])
 
@@ -101,95 +118,140 @@ export function NetworkInspectorPanel({
     [highlightedEntryIds]
   )
 
+  // Join each timeline entry with its request payload, then apply client-side filters.
+  const rows = useMemo(
+    () =>
+      entries.map((entry) => {
+        const request = requestsById.get(entry.id)
+        const category = request ? deriveRequestType(request) : "other"
+        return { entry, request, category }
+      }),
+    [entries, requestsById]
+  )
+
+  const filteredRows = useMemo(
+    () =>
+      rows.filter(({ request, category }) => {
+        if (errorsOnly && !((request?.status ?? 0) >= 400)) {
+          return false
+        }
+        if (typeFilter !== "all" && category !== typeFilter) {
+          return false
+        }
+        return true
+      }),
+    [rows, errorsOnly, typeFilter]
+  )
+
+  // Waterfall window across the visible rows.
+  const { windowStart, windowSpan } = useMemo(() => {
+    let start = Number.POSITIVE_INFINITY
+    let end = 0
+    for (const { request } of filteredRows) {
+      if (!request) {
+        continue
+      }
+      const offset = request.offset ?? 0
+      const duration = request.duration ?? 0
+      start = Math.min(start, offset)
+      end = Math.max(end, offset + duration)
+    }
+    if (!Number.isFinite(start)) {
+      start = 0
+    }
+    return { windowStart: start, windowSpan: Math.max(1, end - start) }
+  }, [filteredRows])
+
   const selectedEntry = useMemo(() => {
     if (selectedEntryId) {
-      const selectedMatch = entries.find(
-        (entry) => entry.id === selectedEntryId
-      )
-      if (selectedMatch) {
-        return selectedMatch
+      const match = entries.find((entry) => entry.id === selectedEntryId)
+      if (match) {
+        return match
       }
     }
-
     return entries[0] ?? null
   }, [entries, selectedEntryId])
 
-  const selectedRequest = selectedEntry
-    ? requestsById.get(selectedEntry.id)
-    : null
+  const selectedRequest = selectedEntry ? requestsById.get(selectedEntry.id) : null
+
   let emptyStateMessage = "No network requests captured."
   if (isLoading) {
     emptyStateMessage = "Loading network requests..."
-  } else if (normalizedQuery) {
-    emptyStateMessage = "No requests matched your search."
+  } else if (normalizedQuery || typeFilter !== "all" || errorsOnly) {
+    emptyStateMessage = "No requests matched your filters."
   }
 
   useEffect(() => {
     const sentinel = loadMoreRef.current
     const listContainer = listContainerRef.current
-
     if (!(sentinel && listContainer && hasNextPage) || isFetchingNextPage) {
       return
     }
-
     const observer = new IntersectionObserver(
-      (entries) => {
-        const [entry] = entries
+      (observed) => {
+        const [entry] = observed
         if (entry?.isIntersecting) {
           onLoadMore()
         }
       },
-      {
-        root: listContainer,
-        rootMargin: "120px 0px",
-      }
+      { root: listContainer, rootMargin: "120px 0px" }
     )
-
     observer.observe(sentinel)
-
-    return () => {
-      observer.disconnect()
-    }
+    return () => observer.disconnect()
   }, [hasNextPage, isFetchingNextPage, onLoadMore])
 
   useEffect(() => {
     if (!(selectedEntryId && listContainerRef.current)) {
       return
     }
-
     const escapedSelectedId = CSS.escape(selectedEntryId)
     const selectedRow = listContainerRef.current.querySelector<HTMLElement>(
       `[data-entry-id="${escapedSelectedId}"]`
     )
-
-    selectedRow?.scrollIntoView({
-      behavior: "smooth",
-      block: "nearest",
-    })
+    selectedRow?.scrollIntoView({ behavior: "smooth", block: "nearest" })
   }, [selectedEntryId])
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="space-y-3 border-b bg-background p-3">
-        <div className="flex items-center justify-between">
-          <p className="font-medium text-muted-foreground text-xs uppercase tracking-wide">
-            Captured Requests
-          </p>
-          <span className="rounded-full border bg-muted px-2 py-0.5 font-mono text-[10px] text-muted-foreground">
-            {entries.length}
-          </span>
-        </div>
-        <div className="relative">
+      {/* Toolbar: filter + errors-only */}
+      <div className="flex items-center gap-2 border-b bg-background px-3 py-2">
+        <div className="relative flex-1">
           <Search className="pointer-events-none absolute top-1/2 left-2.5 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
           <Input
-            className="h-8 pl-7 text-xs"
-            onChange={(event) => {
-              syncSearchQuery(event.target.value)
-            }}
-            placeholder="Filter by method, URL, or status..."
+            className="h-7 pl-7 text-xs"
+            onChange={(event) => syncSearchQuery(event.target.value)}
+            placeholder="Filter"
             ref={searchInputRef}
           />
         </div>
+        <label className="flex shrink-0 cursor-pointer items-center gap-1.5 text-muted-foreground text-xs">
+          <input
+            checked={errorsOnly}
+            className="size-3.5 accent-red-500"
+            onChange={(event) => setErrorsOnly(event.target.checked)}
+            type="checkbox"
+          />
+          Errors only
+        </label>
+      </div>
+
+      {/* Type filter chips */}
+      <div className="flex flex-wrap items-center gap-1 border-b bg-background px-3 py-1.5">
+        {TYPE_CHIPS.map((chip) => (
+          <button
+            className={cn(
+              "rounded-full px-2 py-0.5 font-medium text-[11px] transition-colors",
+              typeFilter === chip.id
+                ? "bg-emerald-500/15 text-emerald-500"
+                : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+            )}
+            key={chip.id}
+            onClick={() => setTypeFilter(chip.id)}
+            type="button"
+          >
+            {chip.label}
+          </button>
+        ))}
       </div>
 
       <ResizablePanelGroup className="min-h-0 flex-1" orientation="vertical">
@@ -197,36 +259,40 @@ export function NetworkInspectorPanel({
           defaultSize={REQUEST_LIST_DEFAULT_HEIGHT}
           minSize={REQUEST_LIST_MIN_HEIGHT}
         >
-          <div
-            className="h-full overflow-y-auto border-b bg-background"
-            ref={listContainerRef}
-          >
-            {entries.length === 0 ? (
+          <div className="h-full overflow-auto bg-background" ref={listContainerRef}>
+            {filteredRows.length === 0 ? (
               <EmptyState message={emptyStateMessage} />
             ) : (
-              <div className="w-full min-w-max text-left text-[11px] font-mono leading-tight">
-                <div className="flex border-b border-muted bg-muted/30 px-2 py-1 text-muted-foreground font-semibold sticky top-0 z-10">
-                  <div className="w-[30%] shrink-0">Name</div>
-                  <div className="w-[10%] shrink-0">Method</div>
-                  <div className="w-[10%] shrink-0">Status</div>
-                  <div className="w-[25%] shrink-0">Domain</div>
-                  <div className="w-[15%] shrink-0 text-right">Time</div>
+              <div className="min-w-max text-left font-mono text-[11px] leading-tight">
+                {/* Header */}
+                <div className="sticky top-0 z-10 flex border-muted border-b bg-muted/40 px-2 py-1.5 font-semibold text-muted-foreground">
+                  <div className="w-8 shrink-0 text-right pr-2">#</div>
+                  <div className="w-[180px] shrink-0">Name</div>
+                  <div className="w-14 shrink-0">Method</div>
+                  <div className="w-12 shrink-0">Status</div>
+                  <div className="w-36 shrink-0">Domain</div>
+                  <div className="w-14 shrink-0">Type</div>
+                  <div className="w-16 shrink-0 text-right pr-2">Size</div>
+                  <div className="w-16 shrink-0 text-right pr-2">Time</div>
+                  <div className="w-36 shrink-0">Waterfall</div>
                 </div>
-                {entries.map((entry) => {
-                  const request = requestsById.get(entry.id)
+
+                {filteredRows.map(({ entry, request, category }, index) => {
                   const status = request?.status ?? null
                   const duration = request?.duration ?? null
                   const parsed = safeParseUrl(request?.url)
-                  const nameText = parsed
-                    ? `${parsed.pathname.split('/').pop() || '/'}`
-                    : (request?.url ?? entry.detail)
+                  const name = networkRequestName(request?.url, entry.detail)
                   const fullUrl = request?.url ?? entry.detail
                   const isSelected = entry.id === selectedEntry?.id
                   const isHighlighted = highlightedEntryIdSet.has(entry.id)
 
+                  const offset = request?.offset ?? 0
+                  const barLeft = ((offset - windowStart) / windowSpan) * 100
+                  const barWidth = Math.max(1.5, ((duration ?? 0) / windowSpan) * 100)
+
                   let rowBg = "transparent"
                   if (isSelected) {
-                    rowBg = "bg-primary/20 text-primary-foreground dark:bg-primary/30"
+                    rowBg = "bg-primary/20"
                   } else if (isHighlighted) {
                     rowBg = "bg-primary/10"
                   } else if (status && status >= 400) {
@@ -236,7 +302,7 @@ export function NetworkInspectorPanel({
                   return (
                     <button
                       className={cn(
-                        "flex w-full items-center px-2 py-1 text-left hover:bg-muted/50 focus:outline-none transition-none border-b border-transparent hover:border-muted",
+                        "flex w-full items-center border-transparent border-b px-2 py-1 text-left transition-none hover:bg-muted/50",
                         rowBg
                       )}
                       data-entry-id={entry.id}
@@ -244,28 +310,61 @@ export function NetworkInspectorPanel({
                       onClick={() => onEntrySelect(entry)}
                       type="button"
                     >
-                      <div className="w-[30%] shrink-0 truncate pr-2 font-medium" title={fullUrl}>
-                        {nameText}
+                      <div className="w-8 shrink-0 pr-2 text-right text-muted-foreground">
+                        {index + 1}
                       </div>
-                      <div className="w-[10%] shrink-0 pr-2">
+                      <div
+                        className="flex w-[180px] shrink-0 items-center gap-1.5 truncate pr-2 font-medium"
+                        title={fullUrl}
+                      >
+                        <span
+                          className={cn(
+                            "size-2 shrink-0 rounded-[3px]",
+                            networkTypeDotClass(category)
+                          )}
+                        />
+                        <span className="truncate">{name}</span>
+                      </div>
+                      <div className="w-14 shrink-0 pr-1 text-muted-foreground">
                         {request?.method ?? entry.label}
                       </div>
-                      <div className="w-[10%] shrink-0 pr-2">
-                        {status !== null ? (
-                          <span className={statusTone(status)}>{status}</span>
-                        ) : (
+                      <div className="w-12 shrink-0 pr-1">
+                        {status === null ? (
                           <span className="text-muted-foreground">-</span>
+                        ) : (
+                          <span className={statusTone(status)}>{status}</span>
                         )}
                       </div>
-                      <div className="w-[25%] shrink-0 truncate pr-2 text-muted-foreground">
+                      <div className="w-36 shrink-0 truncate pr-2 text-muted-foreground">
                         {parsed?.host ?? "-"}
                       </div>
-                      <div className="w-[15%] shrink-0 text-right pr-2 text-muted-foreground">
+                      <div className="w-14 shrink-0 pr-1 text-muted-foreground">
+                        {networkTypeLabel(category)}
+                      </div>
+                      <div className="w-16 shrink-0 pr-2 text-right text-muted-foreground">
+                        {request ? formatResponseSize(request) : "—"}
+                      </div>
+                      <div className="w-16 shrink-0 pr-2 text-right text-muted-foreground">
                         {typeof duration === "number" ? `${duration} ms` : "-"}
+                      </div>
+                      <div className="w-36 shrink-0 pr-1">
+                        <div className="relative h-2 w-full rounded-sm bg-muted/50">
+                          <div
+                            className={cn(
+                              "absolute top-0 h-2 min-w-[2px] rounded-sm",
+                              status && status >= 400 ? "bg-red-500" : "bg-primary/70"
+                            )}
+                            style={{
+                              left: `${Math.max(0, Math.min(100, barLeft))}%`,
+                              width: `${Math.max(0, Math.min(100, barWidth))}%`,
+                            }}
+                          />
+                        </div>
                       </div>
                     </button>
                   )
                 })}
+
                 {(hasNextPage || isFetchingNextPage) && (
                   <div className="flex justify-center border-t p-2">
                     <div className="w-full">

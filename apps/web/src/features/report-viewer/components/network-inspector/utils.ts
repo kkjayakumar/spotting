@@ -48,6 +48,134 @@ export function statusTone(status: number): string {
   return "text-muted-foreground"
 }
 
+export type NetworkTypeCategory =
+  | "fetch-xhr"
+  | "ws"
+  | "js"
+  | "css"
+  | "media"
+  | "font"
+  | "doc"
+  | "other"
+
+type ResourceLike = {
+  url?: string
+  method?: string
+  responseHeaders?: Record<string, string> | null
+}
+
+function headerValue(
+  headers: Record<string, string> | null | undefined,
+  name: string
+): string | undefined {
+  if (!headers) {
+    return undefined
+  }
+  const lower = name.toLowerCase()
+  for (const key of Object.keys(headers)) {
+    if (key.toLowerCase() === lower) {
+      return headers[key]
+    }
+  }
+  return undefined
+}
+
+/** Classify a captured request the way browser devtools do — from content-type + extension. */
+export function deriveRequestType(request: ResourceLike): NetworkTypeCategory {
+  const url = request.url ?? ""
+  if (url.startsWith("ws://") || url.startsWith("wss://")) {
+    return "ws"
+  }
+  const contentType = (headerValue(request.responseHeaders, "content-type") ?? "").toLowerCase()
+  const path = (safeParseUrl(url)?.pathname ?? url).toLowerCase()
+
+  if (contentType.includes("javascript") || /\.(js|mjs|cjs)(\?|$)/.test(path)) {
+    return "js"
+  }
+  if (contentType.includes("css") || /\.css(\?|$)/.test(path)) {
+    return "css"
+  }
+  if (contentType.startsWith("font/") || contentType.includes("font") || /\.(woff2?|ttf|otf|eot)(\?|$)/.test(path)) {
+    return "font"
+  }
+  if (
+    contentType.startsWith("image/") ||
+    contentType.startsWith("video/") ||
+    contentType.startsWith("audio/") ||
+    /\.(png|jpe?g|gif|svg|webp|avif|ico|mp4|webm|mp3|wav)(\?|$)/.test(path)
+  ) {
+    return "media"
+  }
+  if (contentType.includes("html") || /\.html?(\?|$)/.test(path)) {
+    return "doc"
+  }
+  if (
+    contentType.includes("json") ||
+    contentType.includes("xml") ||
+    contentType.includes("text/plain") ||
+    /\.json(\?|$)/.test(path)
+  ) {
+    return "fetch-xhr"
+  }
+  return "fetch-xhr"
+}
+
+const TYPE_LABELS: Record<NetworkTypeCategory, string> = {
+  "fetch-xhr": "xhr",
+  ws: "ws",
+  js: "js",
+  css: "css",
+  media: "media",
+  font: "font",
+  doc: "doc",
+  other: "other",
+}
+
+export function networkTypeLabel(category: NetworkTypeCategory): string {
+  return TYPE_LABELS[category]
+}
+
+const TYPE_DOT_CLASS: Record<NetworkTypeCategory, string> = {
+  "fetch-xhr": "bg-violet-500",
+  ws: "bg-pink-500",
+  js: "bg-amber-500",
+  css: "bg-blue-500",
+  media: "bg-emerald-500",
+  font: "bg-purple-400",
+  doc: "bg-sky-400",
+  other: "bg-muted-foreground",
+}
+
+export function networkTypeDotClass(category: NetworkTypeCategory): string {
+  return TYPE_DOT_CLASS[category]
+}
+
+/** Best-effort response size from the Content-Length header (the only size signal captured). */
+export function formatResponseSize(request: ResourceLike): string {
+  const raw = headerValue(request.responseHeaders, "content-length")
+  const bytes = raw ? Number(raw) : Number.NaN
+  if (!Number.isFinite(bytes) || bytes <= 0) {
+    return "—"
+  }
+  if (bytes < 1024) {
+    return `${bytes} B`
+  }
+  if (bytes < 1024 * 1024) {
+    return `${(bytes / 1024).toFixed(1)} KB`
+  }
+  return `${(bytes / 1024 / 1024).toFixed(2)} MB`
+}
+
+/** Short resource name (last path segment), like the devtools "Name" column. */
+export function networkRequestName(url: string | undefined, fallback: string): string {
+  const parsed = safeParseUrl(url)
+  if (!parsed) {
+    return url || fallback
+  }
+  const last = parsed.pathname.split("/").filter(Boolean).pop()
+  return last || parsed.host || "/"
+}
+
 export function asKeyValueItems(
   value: Record<string, string> | null
 ): KeyValueItem[] {
