@@ -170,11 +170,60 @@ function installResourceObserver() {
   }
 }
 
+/** Record resources already loaded BEFORE capture started (js/css/img/font/doc). */
+export function snapshotResourceTimings() {
+  if (typeof performance === "undefined" || typeof performance.getEntriesByType !== "function") {
+    return;
+  }
+  try {
+    for (const item of performance.getEntriesByType("resource")) {
+      const resource = item as PerformanceResourceTiming;
+      const initiator = resource.initiatorType;
+      if (initiator === "fetch" || initiator === "xmlhttprequest") continue;
+      record({
+        id: nextId(),
+        t: Date.now(),
+        type: mapInitiatorType(initiator),
+        method: "GET",
+        url: resource.name,
+        status: (resource as unknown as { responseStatus?: number }).responseStatus,
+        durationMs: Math.round(resource.duration),
+      });
+    }
+  } catch {
+    /* resource timing unavailable */
+  }
+}
+
+/** Record WebSocket connections (type "ws"). */
+function installWebSocketInterceptor() {
+  const OrigWebSocket = window.WebSocket;
+  if (typeof OrigWebSocket !== "function") return;
+  class PatchedWebSocket extends OrigWebSocket {
+    constructor(url: string | URL, protocols?: string | string[]) {
+      super(url, protocols);
+      try {
+        record({
+          id: nextId(),
+          t: Date.now(),
+          type: "ws",
+          method: "GET",
+          url: typeof url === "string" ? url : url.toString(),
+        });
+      } catch {
+        /* ignore */
+      }
+    }
+  }
+  window.WebSocket = PatchedWebSocket as unknown as typeof WebSocket;
+}
+
 export function installNetworkInterceptor() {
   if (installed || typeof window === "undefined") return;
   installed = true;
 
   installResourceObserver();
+  installWebSocketInterceptor();
 
   const origFetch = window.fetch.bind(window);
   window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {

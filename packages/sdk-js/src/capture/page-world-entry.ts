@@ -351,6 +351,32 @@
     return origSend.call(this, body);
   };
 
+  // Capture WebSocket connections (type "ws").
+  try {
+    const OrigWebSocket = window.WebSocket;
+    if (typeof OrigWebSocket === "function") {
+      class PatchedWebSocket extends OrigWebSocket {
+        constructor(url: string | URL, protocols?: string | string[]) {
+          super(url, protocols);
+          try {
+            emit("network", {
+              id: nextId("ws"),
+              t: Date.now(),
+              type: "ws",
+              method: "GET",
+              url: typeof url === "string" ? url : url.toString(),
+            });
+          } catch {
+            /* ignore */
+          }
+        }
+      }
+      window.WebSocket = PatchedWebSocket as unknown as typeof WebSocket;
+    }
+  } catch {
+    /* ignore */
+  }
+
   // Capture ALL other resources (scripts, css, images, fonts, docs, …) via Resource Timing.
   function mapInitiatorType(initiatorType: string): string {
     switch (initiatorType) {

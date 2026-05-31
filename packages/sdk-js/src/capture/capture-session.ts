@@ -1,5 +1,5 @@
 import { clearConsoleLog } from "./console-interceptor";
-import { clearNetworkLog } from "./network-interceptor";
+import { clearNetworkLog, snapshotResourceTimings } from "./network-interceptor";
 import { clearUserActionLog, recordSessionNavigation } from "./user-actions";
 
 let sessionStartedAt: number | null = null;
@@ -11,6 +11,9 @@ export function markCaptureSessionStart() {
   clearNetworkLog();
   clearConsoleLog();
   clearUserActionLog();
+  // Seed the cleared log with resources already loaded on the page (js/css/font/img/doc),
+  // so the Network panel shows ALL types — not only requests made during the recording.
+  snapshotResourceTimings();
   recordSessionNavigation();
 }
 

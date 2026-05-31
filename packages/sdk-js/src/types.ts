@@ -1,6 +1,7 @@
 export type NetworkResourceType =
   | "fetch"
   | "xhr"
+  | "ws"
   | "script"
   | "css"
   | "img"
