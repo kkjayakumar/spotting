@@ -18,3 +18,8 @@ apps/web/test-results/
 
 # Generated compliance output (may contain local machine paths)
 docs/provenance/mirror-scan-status.md
+
+# AMO / release archives (never commit — use `git archive` locally; files are ~GB)
+spotting-amo-source.zip
+spotting-amo-source/
+*.amo-source.zip
