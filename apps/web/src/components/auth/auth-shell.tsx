@@ -44,7 +44,7 @@ export function AuthShell({ title, description, children }: AuthShellProps) {
         </h1>
       </div>
 
-      <Card className="w-full max-w-[440px] border border-white/20 bg-black/60 backdrop-blur-2xl shadow-[0_0_50px_rgba(0,0,0,0.5)] ring-1 ring-white/10 transition-all hover:border-white/30">
+      <Card className="w-full max-w-[440px] border border-white/20 bg-black/60 text-slate-100 backdrop-blur-2xl shadow-[0_0_50px_rgba(0,0,0,0.5)] ring-1 ring-white/10 transition-all hover:border-white/30 [&_[data-slot=field-label]]:text-slate-200 [&_[data-slot=field-error]]:text-red-300 [&_a.font-medium]:text-[#00BFFF] [&_a.font-medium]:hover:text-sky-300">
         <CardHeader className="space-y-2 pt-8 text-center">
           <CardTitle className="font-bold text-4xl tracking-tight text-white drop-shadow-md">
             {title}

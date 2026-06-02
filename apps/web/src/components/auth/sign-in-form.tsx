@@ -243,7 +243,7 @@ export function SignInForm() {
                 <div className="flex items-center justify-between">
                   <FieldLabel htmlFor={field.name}>Password</FieldLabel>
                   <Link
-                    className="text-muted-foreground text-sm transition hover:text-foreground"
+                    className="text-slate-400 text-sm transition hover:text-slate-200"
                     href="/forgot-password"
                   >
                     Forgot password?
@@ -278,10 +278,10 @@ export function SignInForm() {
         </Button>
       </form>
 
-      <p className="text-center text-muted-foreground text-sm">
+      <p className="text-center text-slate-400 text-sm">
         Don&apos;t have an account?{" "}
         <Link
-          className="font-medium text-foreground hover:underline"
+          className="font-medium text-[#00BFFF] hover:text-sky-300 hover:underline"
           href="/register"
         >
           Sign up

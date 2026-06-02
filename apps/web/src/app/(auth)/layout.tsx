@@ -6,7 +6,7 @@ export default function AuthLayout({
   children: React.ReactNode
 }) {
   return (
-    <div className="flex min-h-screen items-center justify-center relative overflow-hidden bg-slate-950">
+    <div className="dark flex min-h-screen items-center justify-center relative overflow-hidden bg-slate-950">
       <SpiderWebBackground />
       {children}
     </div>

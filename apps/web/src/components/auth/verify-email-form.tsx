@@ -147,9 +147,12 @@ export function VerifyEmailForm({ email }: VerifyEmailFormProps) {
         </div>
       </form>
 
-      <p className="text-center text-muted-foreground text-sm">
+      <p className="text-center text-slate-400 text-sm">
         Already verified?{" "}
-        <Link className="font-medium text-foreground hover:underline" href="/">
+        <Link
+          className="font-medium text-[#00BFFF] hover:text-sky-300 hover:underline"
+          href="/"
+        >
           Go to dashboard
         </Link>
       </p>
