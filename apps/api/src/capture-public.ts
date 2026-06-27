@@ -18,6 +18,7 @@ import {
   readJsonBody,
   requireNonEmptyString,
 } from "./validation";
+import { notifyAegisReportCreated } from "./aegisops";
 
 function parseAllowedOrigins(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
@@ -250,6 +251,11 @@ export function createCapturePublicRouter() {
         ...(groupId !== undefined && groupId !== null ? { groupId } : {}),
       },
     });
+    notifyAegisReportCreated({
+      reportId: report.id,
+      pageUrl: report.pageUrl,
+      metadataJson: report.metadataJson,
+    }).catch(console.error);
     return c.json(report, 201);
   });
 

@@ -147,18 +147,25 @@ export async function deleteS3Objects(keys: string[]): Promise<number> {
   const uniqueKeys = [...new Set(keys.map((key) => key.trim()).filter(Boolean))];
   if (uniqueKeys.length === 0) return 0;
 
-  const bucket = bucketName();
-  const result = await s3Client.send(
-    new DeleteObjectsCommand({
-      Bucket: bucket,
-      Delete: {
-        Objects: uniqueKeys.map((Key) => ({ Key })),
-        Quiet: true,
-      },
-    }),
-  );
+  try {
+    const bucket = bucketName();
+    const result = await s3Client.send(
+      new DeleteObjectsCommand({
+        Bucket: bucket,
+        Delete: {
+          Objects: uniqueKeys.map((Key) => ({ Key })),
+          Quiet: true,
+        },
+      }),
+    );
 
-  return result.Deleted?.length ?? 0;
+    return result.Deleted?.length ?? 0;
+  } catch (error: any) {
+    if (error.name === "NoSuchBucket") {
+      return 0;
+    }
+    throw error;
+  }
 }
 
 export async function deleteS3Prefix(prefix: string): Promise<number> {
@@ -167,28 +174,35 @@ export async function deleteS3Prefix(prefix: string): Promise<number> {
   let deleted = 0;
   let continuationToken: string | undefined;
 
-  do {
-    const listing = await s3Client.send(
-      new ListObjectsV2Command({
-        Bucket: bucket,
-        Prefix: normalizedPrefix,
-        ContinuationToken: continuationToken,
-      }),
-    );
+  try {
+    do {
+      const listing = await s3Client.send(
+        new ListObjectsV2Command({
+          Bucket: bucket,
+          Prefix: normalizedPrefix,
+          ContinuationToken: continuationToken,
+        }),
+      );
 
-    const keys =
-      listing.Contents?.map((item) => item.Key).filter(
-        (key): key is string => typeof key === "string" && key.length > 0,
-      ) ?? [];
+      const keys =
+        listing.Contents?.map((item) => item.Key).filter(
+          (key): key is string => typeof key === "string" && key.length > 0,
+        ) ?? [];
 
-    if (keys.length > 0) {
-      deleted += await deleteS3Objects(keys);
+      if (keys.length > 0) {
+        deleted += await deleteS3Objects(keys);
+      }
+
+      continuationToken = listing.IsTruncated
+        ? listing.NextContinuationToken
+        : undefined;
+    } while (continuationToken);
+  } catch (error: any) {
+    if (error.name === "NoSuchBucket") {
+      return deleted;
     }
-
-    continuationToken = listing.IsTruncated
-      ? listing.NextContinuationToken
-      : undefined;
-  } while (continuationToken);
+    throw error;
+  }
 
   return deleted;
 }

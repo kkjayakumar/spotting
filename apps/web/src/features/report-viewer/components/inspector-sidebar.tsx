@@ -12,6 +12,7 @@ import type { ReactNode } from "react"
 
 import type { InspectorTab } from "../constants"
 import { NetworkInspectorPanel } from "./network-inspector"
+import { BackendTracePanel } from "./backend-trace-panel"
 import { ReportDetailsPanel } from "./report-details-panel"
 import { ReproductionStepList } from "./reproduction-step-list"
 import { SessionTimelineList } from "./session-timeline-list"

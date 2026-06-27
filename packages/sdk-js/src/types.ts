@@ -1,4 +1,4 @@
-export type NetworkResourceType =
+﻿export type NetworkResourceType =
   | "fetch"
   | "xhr"
   | "ws"
@@ -18,6 +18,7 @@ export interface NetworkLogEntry {
   url: string;
   status?: number;
   durationMs?: number;
+  correlationId?: string;
   error?: string;
   requestHeaders?: Record<string, string>;
   responseHeaders?: Record<string, string>;
@@ -53,16 +54,17 @@ export interface CaptureMetadata {
   captureSessionEndedAt?: number;
   /** Recording length in ms (for video scrubber). */
   durationMs?: number;
+  correlationId?: string;
 }
 
 export interface SpottingInitOptions {
-  /** Public key (e.g. spk_live_…) */
+  /** Public key (e.g. spk_live_â€¦) */
   publicKey: string;
   /** API base URL without trailing slash (e.g. http://localhost:3002) */
   apiBaseUrl: string;
   /** Optional label shown on the floating button */
   buttonLabel?: string;
-  /** Dashboard base URL for “view report” links (e.g. http://localhost:3003) */
+  /** Dashboard base URL for â€œview reportâ€ links (e.g. http://localhost:3003) */
   dashboardUrl?: string;
   /** Max stored network events (default 200) */
   maxNetworkEvents?: number;
@@ -85,3 +87,4 @@ export interface SubmitCaptureInput {
   /** Optional WebM / screen recording */
   recordingBlob?: Blob | null;
 }
+

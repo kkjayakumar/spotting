@@ -10,6 +10,19 @@ import {
 } from "./capture/capture-session";
 import { fetchViaCaptureTransport } from "./capture/extension-fetch";
 import { getUserActionLog } from "./capture/user-actions";
+function resolveCorrelationId(network: CaptureMetadata["network"]): string | undefined {
+  for (let i = network.length - 1; i >= 0; i--) {
+    const entry = network[i];
+    for (const headers of [entry.responseHeaders, entry.requestHeaders]) {
+      if (!headers) continue;
+      for (const [key, value] of Object.entries(headers)) {
+        if (key.toLowerCase() === "x-request-id" && value) return value;
+      }
+    }
+  }
+  return undefined;
+}
+
 
 export interface SpottingClientOptions {
   publicKey: string;
@@ -120,7 +133,7 @@ function formatApiFailure(res: Response, text: string, label: string): Error {
   } catch {
     /* not JSON */
   }
-  const tail = text.length > 400 ? `${text.slice(0, 400)}…` : text;
+  const tail = text.length > 400 ? `${text.slice(0, 400)}â€¦` : text;
   return new Error(`${label} failed: ${res.status} ${tail}`);
 }
 
@@ -149,7 +162,7 @@ export class SpottingClient {
 
   constructor(options: SpottingClientOptions) {
     if (!options.publicKey || !isCapturePublicKey(options.publicKey)) {
-      throw new Error("publicKey must look like spk_live_…");
+      throw new Error("publicKey must look like spk_live_â€¦");
     }
     this.publicKey = options.publicKey;
     this.apiBaseUrl = resolveCaptureApiBaseUrl(options.apiBaseUrl);
@@ -160,8 +173,10 @@ export class SpottingClient {
     const sessionEndedAt = getCaptureSessionEndedAt();
     const durationMs = getCaptureSessionDurationMs();
 
+    const network = getNetworkLog();
+    const correlationId = resolveCorrelationId(network);
     return {
-      network: getNetworkLog(),
+      network,
       console: getConsoleLog(),
       actions: getUserActionLog(),
       userAgent: typeof navigator !== "undefined" ? navigator.userAgent : "",
@@ -175,6 +190,7 @@ export class SpottingClient {
         : {}),
       ...(sessionEndedAt != null ? { captureSessionEndedAt: sessionEndedAt } : {}),
       ...(durationMs != null ? { durationMs } : {}),
+      ...(correlationId ? { correlationId } : {}),
       ...extra,
     };
   }
@@ -324,3 +340,4 @@ export class SpottingClient {
     return { reportId };
   }
 }
+
