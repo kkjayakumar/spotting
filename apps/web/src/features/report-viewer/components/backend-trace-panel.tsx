@@ -6,7 +6,7 @@ import type { SpottingReportViewModel } from "../types"
 const COPILOT_URL = process.env.NEXT_PUBLIC_DEVOPS_COPILOT_URL ?? "http://localhost:5000"
 
 function readCorrelationId(report: SpottingReportViewModel): string | null {
-  const meta = report.metadataJson
+  const meta = report.metadata
   if (!meta || typeof meta !== "object" || Array.isArray(meta)) return null
   const correlationId = (meta as Record<string, unknown>).correlationId
   return typeof correlationId === "string" && correlationId ? correlationId : null
