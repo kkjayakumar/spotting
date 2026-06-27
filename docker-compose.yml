@@ -39,7 +39,7 @@ services:
       API_PORT: "3000"
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@spotting-postgres:5432/${POSTGRES_DB:-spotting}?schema=public
       REDIS_URL: redis://redis:6379
-      S3_AUTO_CREATE_BUCKET: "false"
+      S3_AUTO_CREATE_BUCKET: "true"
       SPOTTING_AUTH_URL: ${SPOTTING_AUTH_URL:-http://127.0.0.1:3000}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://127.0.0.1:3001}
     healthcheck:
