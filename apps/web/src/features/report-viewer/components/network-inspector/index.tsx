@@ -392,7 +392,7 @@ export function NetworkInspectorPanel({
             )}
           </div>
         {detailOpen && selectedRequest ? (
-          <div className="absolute inset-0 z-20 bg-background">
+          <div className="absolute inset-0 z-20 bg-background bg-card">
             <NetworkRequestDetails
               bugReportId={bugReportId}
               key={selectedEntry?.id ?? "empty"}
