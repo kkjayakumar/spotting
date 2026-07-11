@@ -56,7 +56,7 @@ export function SpottingReportViewer({ reportId }: SpottingReportViewerProps) {
   const mobileVideoToggle = (
     <button
       aria-label={viewer.mobileRecordingHidden ? "Show recording" : "Hide recording"}
-      className="rounded-[4px] p-2 text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
+      className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
       onClick={viewer.toggleMobileRecording}
       type="button"
     >

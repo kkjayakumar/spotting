@@ -69,7 +69,7 @@ export function InspectorSidebar({
           <button
             aria-current={activeTab === tab.id ? "page" : undefined}
             className={cn(
-              "flex flex-1 items-center justify-center gap-1.5 rounded-[4px] py-1.5 font-medium text-xs transition-all",
+              "flex flex-1 items-center justify-center gap-1.5 rounded-lg py-1.5 font-medium text-xs transition-all",
               activeTab === tab.id
                 ? "bg-muted text-foreground shadow-sm"
                 : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
