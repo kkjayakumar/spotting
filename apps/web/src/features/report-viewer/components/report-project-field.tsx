@@ -49,22 +49,26 @@ export function ReportProjectField({
   const groups = groupsQuery.data ?? []
   const currentName =
     groups.find((group) => group.id === groupId)?.name ?? "No project"
-
   if (!canEdit) {
     return (
-      <div className="flex flex-col gap-0.5">
-        <span className="font-medium text-muted-foreground text-xs">Project</span>
-        <span className="inline-flex items-center gap-1.5 text-foreground text-sm">
-          <FolderOpen className="size-3.5 text-muted-foreground" />
-          {groupId ? currentName : "No project"}
-        </span>
+      <div className="flex items-start gap-3 rounded-lg border bg-card/45 p-3 shadow-sm hover:bg-card/90 transition-colors">
+        <FolderOpen className="size-4 text-violet-500 dark:text-violet-400 mt-0.5 shrink-0" />
+        <div className="flex flex-col gap-0.5 min-w-0">
+          <span className="font-semibold text-muted-foreground text-[10px] uppercase tracking-wider">Project</span>
+          <span className="text-foreground text-sm font-medium">
+            {groupId ? currentName : "No project"}
+          </span>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="flex flex-col gap-1.5">
-      <span className="font-medium text-muted-foreground text-xs">Project</span>
+    <div className="flex flex-col gap-1.5 px-1">
+      <span className="flex items-center gap-1.5 font-semibold text-muted-foreground text-[10px] uppercase tracking-wider">
+        <FolderOpen className="size-3.5 text-violet-500 dark:text-violet-400" />
+        Project
+      </span>
       <Select
         disabled={!organizationId || mutation.isPending}
         onValueChange={(value) => {
@@ -87,7 +91,7 @@ export function ReportProjectField({
           ))}
         </SelectContent>
       </Select>
-      <p className="text-muted-foreground text-xs">
+      <p className="text-muted-foreground text-[11px] mt-0.5 leading-normal">
         Move this report to another project anytime.
       </p>
     </div>

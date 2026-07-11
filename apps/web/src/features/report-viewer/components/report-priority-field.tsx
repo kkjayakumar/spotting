@@ -48,27 +48,38 @@ export function ReportPriorityField({
   })
 
   const currentLabel = labelForPriority(priority)
-
   if (!canEdit) {
     return (
-      <div className="flex flex-col gap-0.5">
-        <span className="font-medium text-muted-foreground text-xs">Priority</span>
-        <span
-          className={cn(
-            "inline-flex w-fit items-center gap-1.5 rounded-md border px-2 py-0.5 font-medium text-sm capitalize",
-            chipClassForPriority(priority),
-          )}
-        >
-          <Flag className="size-3.5" />
-          {currentLabel}
-        </span>
+      <div className="flex items-start gap-3 rounded-lg border bg-card/45 p-3 shadow-sm hover:bg-card/90 transition-colors">
+        <Flag className={cn("size-4 mt-0.5 shrink-0", 
+          priority === "high" ? "text-red-500 dark:text-red-400" :
+          priority === "medium" ? "text-amber-500 dark:text-amber-400" :
+          "text-blue-500 dark:text-blue-400"
+        )} />
+        <div className="flex flex-col gap-0.5 min-w-0">
+          <span className="font-semibold text-muted-foreground text-[10px] uppercase tracking-wider">Priority</span>
+          <span className={cn("text-sm font-semibold capitalize", 
+            priority === "high" ? "text-red-600 dark:text-red-400" :
+            priority === "medium" ? "text-amber-600 dark:text-amber-400" :
+            "text-blue-600 dark:text-blue-400"
+          )}>
+            {currentLabel}
+          </span>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="flex flex-col gap-1.5">
-      <span className="font-medium text-muted-foreground text-xs">Priority</span>
+    <div className="flex flex-col gap-1.5 px-1">
+      <span className="flex items-center gap-1.5 font-semibold text-muted-foreground text-[10px] uppercase tracking-wider">
+        <Flag className={cn("size-3.5",
+          priority === "high" ? "text-red-500 dark:text-red-400" :
+          priority === "medium" ? "text-amber-500 dark:text-amber-400" :
+          "text-blue-500 dark:text-blue-400"
+        )} />
+        Priority
+      </span>
       <Select
         disabled={mutation.isPending}
         onValueChange={(value) => {

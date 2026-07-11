@@ -107,7 +107,7 @@ export function PublicKeyForm({
                 <strong>Leave empty</strong> to allow captures from any domain
                 (recommended for QA and the Chrome extension). Otherwise, one
                 origin per line — the <strong>website</strong> where you record
-                (e.g. <code className="text-xs">https://stage.sheshi.cloud</code>
+                (e.g. <code className="text-xs">https://stage.spotting.dev</code>
                 ), not the API (
                 <code className="text-xs">:3000</code>).
               </p>

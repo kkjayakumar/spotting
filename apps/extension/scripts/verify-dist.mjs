@@ -39,7 +39,7 @@ if (target === "chrome") {
     console.error("Chrome target requires tabCapture permission.");
     process.exit(1);
   }
-  if (manifest.content_scripts?.[0]?.world !== "MAIN") {
+  if (manifest.content_scripts && manifest.content_scripts[0]?.world !== "MAIN") {
     console.error('Chrome target must set content_scripts[0].world to "MAIN".');
     process.exit(1);
   }

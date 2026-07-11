@@ -63,7 +63,11 @@ export function buildManifestForTarget(target) {
 
   if (target === "chrome") {
     manifest.permissions.push("tabCapture");
-    manifest.content_scripts[0].world = "MAIN";
+    // Remove broad host permissions and static content scripts to avoid in-depth manual review delays.
+    // The extension dynamically injects content scripts on active tabs via activeTab/scripting.
+    delete manifest.host_permissions;
+    delete manifest.content_scripts;
+    delete manifest.web_accessible_resources;
     return manifest;
   }
 
