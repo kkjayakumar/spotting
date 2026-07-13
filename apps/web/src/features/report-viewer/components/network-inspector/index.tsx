@@ -392,7 +392,12 @@ export function NetworkInspectorPanel({
             )}
           </div>
         {detailOpen && selectedRequest ? (
-          <div className="absolute inset-0 z-20 bg-background bg-card">
+          // Do not use `bg-background` here: `.google-theme [class*="bg-background"]`
+          // forces transparent backgrounds and causes the list to show through.
+          <div
+            className="absolute inset-0 z-20 overflow-hidden"
+            style={{ backgroundColor: "var(--card)" }}
+          >
             <NetworkRequestDetails
               bugReportId={bugReportId}
               key={selectedEntry?.id ?? "empty"}

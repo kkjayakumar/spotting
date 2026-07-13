@@ -85,7 +85,13 @@ export function InspectorSidebar({
         {tabAccessory ? <div className="shrink-0">{tabAccessory}</div> : null}
       </nav>
 
-      <div className="min-h-0 flex-1 overflow-y-auto">
+      <div
+        className={cn(
+          "min-h-0 flex-1",
+          // Network manages its own scroll + detail overlay; other tabs scroll here.
+          activeTab === "network" ? "overflow-hidden" : "overflow-y-auto"
+        )}
+      >
         {activeTab === "details" ? (
           <ReportDetailsPanel onReportUpdated={onReportUpdated} report={report} />
         ) : null}
